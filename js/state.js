@@ -28,6 +28,7 @@ function defaultState() {
       dayEnd: 24,           // Tagesplaner-Ende (Stunde)
       coords: null,         // { lat, lon } für Gebetszeiten
       prayerEnabled: false,
+      showPrayerInTimeline: false, // Gebete nur anzeigen, nicht automatisch in den Plan
       notifyEnabled: false,
     },
     prayerCache: {},        // 'YYYY-MM-DD' → [{ name, time }]
@@ -59,7 +60,11 @@ function load() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.schemaVersion === SCHEMA_VERSION) return parsed;
+      if (parsed && parsed.schemaVersion === SCHEMA_VERSION) {
+        // Neue Settings-Felder in alte Speicherstände mergen
+        parsed.settings = { ...defaultState().settings, ...parsed.settings };
+        return parsed;
+      }
       // Platz für künftige Migrationen v2 → v3 …
     }
     const legacy = localStorage.getItem(LEGACY_KEY);

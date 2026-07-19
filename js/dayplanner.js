@@ -109,11 +109,16 @@ export function initPlannerEvents() {
       return;
     }
 
-    // Slot geklickt → ausgewählten Task platzieren
+    // Slot geklickt → ausgewählten Task platzieren ODER Quick-Add öffnen
     const slot = e.target.closest('.slot');
-    if (slot && selectedTaskId) {
-      planTask(selectedTaskId, slot.dataset.slot, 60);
-      selectedTaskId = null;
+    if (slot) {
+      if (selectedTaskId) {
+        planTask(selectedTaskId, slot.dataset.slot, 60);
+        selectedTaskId = null;
+      } else {
+        // Kein Task ausgewählt → neuen Eintrag direkt zu dieser Zeit anlegen
+        document.dispatchEvent(new CustomEvent('holo:quickadd', { detail: { time: slot.dataset.slot } }));
+      }
       return;
     }
 

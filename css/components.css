@@ -379,3 +379,64 @@
   padding: 10px 18px; box-shadow: 0 0 24px rgba(95,227,255,0.15);
 }
 .toast[hidden] { display: none; }
+
+/* ═══ v3: Suche, Gebets-Panel, Stats, Formulare, Notizen ═══ */
+
+.search-input {
+  background: rgba(95,227,255,0.06);
+  border: 1px solid var(--holo-line);
+  color: var(--text);
+  font-family: var(--font-mono); font-size: 12px;
+  padding: 9px 12px; letter-spacing: 1px; min-width: 160px;
+}
+.search-input::placeholder { color: var(--text-dim); }
+
+.prayer-panel { border-color: var(--prayer-dim); }
+.prayer-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 15px; padding: 4px 0;
+}
+.prayer-row.past { color: var(--text-dim); opacity: 0.6; }
+.prayer-row.next { color: var(--prayer); }
+.prayer-row.next .mono { text-shadow: 0 0 10px var(--prayer-dim); }
+
+.stats-row { display: flex; gap: 8px; }
+.stat {
+  flex: 1; border: 1px solid var(--holo-line);
+  background: var(--bg-panel); padding: 9px 4px; text-align: center;
+}
+.stat b {
+  display: block; font-family: var(--font-mono); font-weight: 400;
+  font-size: 19px; color: var(--holo);
+}
+.stat span {
+  font-family: var(--font-mono); font-size: 8px;
+  letter-spacing: 1px; color: var(--text-dim);
+}
+
+.task-notes {
+  font-size: 13px; color: var(--text-dim);
+  margin-top: 6px; line-height: 1.4; word-break: break-word;
+}
+
+.form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; flex: 1; }
+.form-row-inline { display: flex; gap: 12px; }
+.form-row label {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 2px; color: var(--text-dim);
+}
+.form-input {
+  background: rgba(95,227,255,0.05);
+  border: 1px solid var(--holo-line);
+  color: var(--text);
+  font-family: var(--font-ui); font-size: 15px; font-weight: 500;
+  padding: 9px 11px; width: 100%;
+  color-scheme: dark; resize: vertical;
+}
+select.form-input { font-family: var(--font-mono); font-size: 12px; }
+
+/* Gebets-Blöcke in der Timeline kompakter (20 Min = wenig Höhe) */
+.tl-block.prayer {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; padding: 1px 8px;
+}

@@ -73,6 +73,7 @@
     <button class="hud-btn" data-view="today">◈ HEUTE</button>
     <button class="hud-btn" data-view="week">▤ WOCHE</button>
     <button class="hud-btn" data-view="month">▦ MONAT</button>
+    <input type="text" class="search-input" id="searchInput" placeholder="⌕ SUCHEN …" aria-label="Aufgaben durchsuchen">
     <span class="spacer"></span>
     <button class="hud-btn" id="planDayBtn">◷ TAG PLANEN</button>
     <button class="hud-btn" id="prayerBtn" title="Gebetszeiten als feste Blöcke">☾ GEBETSZEITEN</button>
@@ -83,10 +84,12 @@
   <section class="view" id="view-today">
     <div class="today-layout">
       <div class="today-col">
+        <div class="stats-row" id="statsRow"></div>
         <div class="quest-panel">
           <div class="q-title">⬡ DAILY QUESTS</div>
           <div id="questList"></div>
         </div>
+        <div class="quest-panel prayer-panel" id="prayerPanel" hidden></div>
         <div class="timeline-wrap">
           <div class="timeline" id="todayTimeline"></div>
         </div>
@@ -174,6 +177,90 @@
         <div class="timeline-wrap" style="max-height:64vh">
           <div class="timeline" id="plannerTimeline"></div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Quick-Add-Overlay (Klick auf Zeitslot) ═══ -->
+<div class="overlay" id="quickAddOverlay" hidden>
+  <div class="modal" style="width:min(420px,100%)">
+    <div class="modal-head">
+      <h3>＋ Neuer Eintrag</h3>
+      <span class="mono dim" id="quickTimeLabel" style="font-size:11px; letter-spacing:2px"></span>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label for="quickTitle">WAS STEHT AN?</label>
+        <input type="text" class="form-input" id="quickTitle" maxlength="160" placeholder="z. B. CG-Übungsblatt">
+      </div>
+      <div class="form-row-inline">
+        <div class="form-row">
+          <label for="quickDur">DAUER</label>
+          <select class="form-input" id="quickDur">
+            <option value="30">30 MIN</option>
+            <option value="60" selected>60 MIN</option>
+            <option value="90">90 MIN</option>
+            <option value="120">120 MIN</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="quickDiff">SCHWIERIGKEIT</label>
+          <select class="form-input" id="quickDiff">
+            <option value="easy">LEICHT · 10 XP</option>
+            <option value="medium" selected>MITTEL · 25 XP</option>
+            <option value="hard">SCHWER · 50 XP</option>
+          </select>
+        </div>
+      </div>
+      <div class="card-actions" style="margin-top:6px">
+        <button class="hud-btn primary" id="quickAddBtn">EINPLANEN</button>
+        <button class="hud-btn" id="quickCancel">ABBRECHEN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Edit-Overlay (Task bearbeiten) ═══ -->
+<div class="overlay" id="editOverlay" hidden>
+  <div class="modal" style="width:min(460px,100%)">
+    <div class="modal-head">
+      <h3>✎ Aufgabe bearbeiten</h3>
+      <button class="hud-btn small" id="editCancel">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label for="editTitle">TITEL</label>
+        <input type="text" class="form-input" id="editTitle" maxlength="160">
+      </div>
+      <div class="form-row-inline">
+        <div class="form-row">
+          <label for="editDiff">SCHWIERIGKEIT</label>
+          <select class="form-input" id="editDiff">
+            <option value="easy">LEICHT · 10 XP</option>
+            <option value="medium">MITTEL · 25 XP</option>
+            <option value="hard">SCHWER · 50 XP</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="editDate">DATUM (LEER = PINNWAND)</label>
+          <input type="date" class="form-input" id="editDate">
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="editRecur">WIEDERHOLUNG</label>
+        <select class="form-input" id="editRecur">
+          <option value="">KEINE</option>
+          <option value="daily">↻ TÄGLICH</option>
+          <option value="weekly">↻ WÖCHENTLICH</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="editNotes">NOTIZEN</label>
+        <textarea class="form-input" id="editNotes" rows="3" maxlength="500" placeholder="Details, Links, Gedanken …"></textarea>
+      </div>
+      <div class="card-actions" style="margin-top:6px">
+        <button class="hud-btn primary" id="editSaveBtn">SPEICHERN</button>
       </div>
     </div>
   </div>

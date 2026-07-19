@@ -3,7 +3,10 @@
    ═══════════════════════════════════════════════════════ */
 
 import { getState, subscribe, todayISO } from './state.js';
-import { addTask, toggleDone, setDueDate, deleteTask } from './tasks.js';
+import {
+  addTask, toggleDone, setDueDate, deleteTask,
+  editTask, planTask, findTask, rolloverRecurring,
+} from './tasks.js';
 import { ensureDailyQuests, validateStreak, refreshQuestProgress } from './leveling.js';
 import {
   renderAll, tickClock, switchView, viewState, showLevelUp, toast,
@@ -48,6 +51,58 @@ function handleAction(e) {
   if (act === 'del')     deleteTask(id);
   if (act === 'toBoard') setDueDate(id, null);
   if (act === 'toToday') setDueDate(id, todayISO());
+  if (act === 'edit')    openEdit(id);
+}
+
+/* ── Quick-Add: Eintrag direkt im Zeitplan anlegen ── */
+let quickTime = null;
+
+function openQuickAdd(time) {
+  quickTime = time;
+  el('quickTimeLabel').textContent = `HEUTE · ${time} UHR`;
+  el('quickTitle').value = '';
+  el('quickAddOverlay').hidden = false;
+  el('quickTitle').focus();
+}
+
+function submitQuickAdd() {
+  const t = addTask({
+    title: el('quickTitle').value,
+    difficulty: el('quickDiff').value,
+    dueDate: todayISO(),
+  });
+  if (!t) { el('quickTitle').focus(); return; }
+  planTask(t.id, quickTime, parseInt(el('quickDur').value, 10));
+  el('quickAddOverlay').hidden = true;
+  toast(`EINGEPLANT: ${quickTime} UHR ✓`);
+}
+
+/* ── Edit-Modal: Task vollständig bearbeiten ── */
+let editingId = null;
+
+function openEdit(id) {
+  const t = findTask(id);
+  if (!t) return;
+  editingId = id;
+  el('editTitle').value = t.title;
+  el('editDiff').value = t.difficulty;
+  el('editDate').value = t.dueDate || '';
+  el('editRecur').value = t.recur || '';
+  el('editNotes').value = t.notes || '';
+  el('editOverlay').hidden = false;
+  el('editTitle').focus();
+}
+
+function submitEdit() {
+  editTask(editingId, {
+    title: el('editTitle').value,
+    difficulty: el('editDiff').value,
+    dueDate: el('editDate').value || null,
+    recur: el('editRecur').value || null,
+    notes: el('editNotes').value,
+  });
+  el('editOverlay').hidden = true;
+  toast('GESPEICHERT ✓');
 }
 
 /* ── Drag & Drop: Wochenansicht (Task auf Tag ziehen) ── */
@@ -76,9 +131,41 @@ function initWeekDnD() {
 
 /* ── Boot ── */
 function boot() {
+  rolloverRecurring();   // wiederkehrende Tasks nach vorn rollen
   validateStreak();
   ensureDailyQuests();
   refreshQuestProgress();
+
+  // Suche (filtert Heute-Karten + Pinnwand live)
+  el('searchInput').addEventListener('input', (e) => {
+    viewState.search = e.target.value;
+    renderAll();
+  });
+
+  // Quick-Add: Klick auf leeren Slot in der Heute-Timeline
+  el('view-today').addEventListener('click', (e) => {
+    const slot = e.target.closest('.slot');
+    if (slot) openQuickAdd(slot.dataset.slot);
+    // Toggle "Gebete im Zeitplan anzeigen" (Button wird dynamisch gerendert)
+    if (e.target.id === 'prayerTimelineToggle') {
+      prayerTimes.toggleTimeline();
+    }
+  });
+  // Quick-Add aus dem Tagesplaner heraus
+  document.addEventListener('holo:quickadd', (e) => openQuickAdd(e.detail.time));
+
+  el('quickAddBtn').addEventListener('click', submitQuickAdd);
+  el('quickTitle').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitQuickAdd(); });
+  el('quickCancel').addEventListener('click', () => { el('quickAddOverlay').hidden = true; });
+  el('quickAddOverlay').addEventListener('click', (e) => {
+    if (e.target === el('quickAddOverlay')) el('quickAddOverlay').hidden = true;
+  });
+
+  el('editSaveBtn').addEventListener('click', submitEdit);
+  el('editCancel').addEventListener('click', () => { el('editOverlay').hidden = true; });
+  el('editOverlay').addEventListener('click', (e) => {
+    if (e.target === el('editOverlay')) el('editOverlay').hidden = true;
+  });
 
   // Kommandozeile
   el('addBtn').addEventListener('click', handleAdd);

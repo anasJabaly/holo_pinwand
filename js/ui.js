@@ -30,7 +30,11 @@ export const viewState = {
   weekOffset: 0,
   monthOffset: 0,
   selectedDay: todayISO(),
+  search: '',           // Filter für Heute-Karten & Pinnwand
 };
+
+const matchesSearch = (t) =>
+  !viewState.search || t.title.toLowerCase().includes(viewState.search.toLowerCase());
 
 export function switchView(name) {
   viewState.active = name;
@@ -88,6 +92,51 @@ function renderQuests() {
     </div>`).join('');
 }
 
+/* ── Gebetszeiten-Panel (sichtbare Anzeige, Timeline optional) ── */
+function renderPrayerPanel() {
+  const s = getState();
+  const panel = el('prayerPanel');
+  if (!s.settings.prayerEnabled) { panel.hidden = true; return; }
+
+  const list = prayerTimes.listFor(todayISO());
+  panel.hidden = false;
+
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  // Nächstes Gebet finden (erste Zeit, die noch vor uns liegt)
+  const nextIdx = list.findIndex((p) => toMinutes(p.time) > nowMin);
+
+  panel.innerHTML = `
+    <div class="q-title" style="color:var(--prayer)">☾ GEBETSZEITEN HEUTE</div>
+    ${list.length ? list.map((p, i) => `
+      <div class="prayer-row ${i === nextIdx ? 'next' : ''} ${toMinutes(p.time) <= nowMin ? 'past' : ''}">
+        <span>${esc(p.name)}</span>
+        <span class="mono">${p.time}${i === nextIdx ? ' · NÄCHSTES' : ''}</span>
+      </div>`).join('')
+      : `<div class="mono dim" style="font-size:11px">ZEITEN WERDEN GELADEN …</div>`}
+    <button class="hud-btn small ${s.settings.showPrayerInTimeline ? 'active' : ''}"
+            id="prayerTimelineToggle" style="margin-top:10px; width:100%">
+      ${s.settings.showPrayerInTimeline ? '✓ IM ZEITPLAN SICHTBAR' : 'IM ZEITPLAN ANZEIGEN'}
+    </button>`;
+}
+
+/* ── Mini-Statistik (à la ClickUp-Dashboard) ── */
+function renderStats() {
+  const s = getState();
+  const today = todayISO();
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 6);
+
+  const doneToday = s.tasks.filter((t) => t.done && t.dueDate === today).length;
+  const doneWeek = s.tasks.filter((t) => t.done && t.doneAt && t.doneAt >= weekAgo.setHours(0,0,0,0)).length;
+  const open = s.tasks.filter((t) => !t.done).length;
+
+  el('statsRow').innerHTML = `
+    <div class="stat"><b>${doneToday}</b><span>HEUTE ✓</span></div>
+    <div class="stat"><b>${doneWeek}</b><span>7 TAGE ✓</span></div>
+    <div class="stat"><b>${open}</b><span>OFFEN</span></div>
+    <div class="stat"><b>${s.player.totalXp}</b><span>XP GESAMT</span></div>`;
+}
+
 /* ── Heute: Timeline ── */
 function renderTimeline() {
   const { dayStart, dayEnd } = getState().settings;
@@ -101,6 +150,13 @@ function renderTimeline() {
     const y = (h * 60 - startMin) * ppm;
     html += `<div class="tl-hour" style="top:${y}px">${String(h).padStart(2, '0')}:00</div>`;
     html += `<div class="tl-hourline" style="top:${y}px"></div>`;
+  }
+
+  // Leere Slots sind klickbar → Quick-Add direkt im Tag
+  for (let m = startMin; m < startMin + totalMin; m += 30) {
+    html += `<div class="slot" data-slot="${minToHHMM(m)}"
+                  style="top:${(m - startMin) * ppm}px; height:${30 * ppm}px"
+                  title="＋ Neuer Eintrag um ${minToHHMM(m)}"></div>`;
   }
 
   // Gebets-Blöcke
@@ -145,10 +201,13 @@ function taskCard(t) {
     <div class="holo-card ${t.done ? 'done' : ''}">
       <span class="tag ${t.difficulty}">${DIFFICULTY_LABEL[t.difficulty]}</span>
       <span class="tag xp">+${xp} XP</span>
+      ${t.recur ? `<span class="tag xp">↻ ${t.recur === 'daily' ? 'TÄGLICH' : 'WÖCHENTL.'}</span>` : ''}
       <div class="task-title">${esc(t.title)}</div>
+      ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ''}
       ${t.plan ? `<div class="task-time">◷ ${t.plan.start} · ${t.plan.durationMin} MIN</div>` : ''}
       <div class="card-actions">
         <button class="hud-btn ok"  data-act="toggle"  data-id="${t.id}">${t.done ? 'ZURÜCK' : '✓ FERTIG'}</button>
+        <button class="hud-btn"     data-act="edit"    data-id="${t.id}" title="Bearbeiten">✎</button>
         <button class="hud-btn"     data-act="toBoard" data-id="${t.id}">→ PINNWAND</button>
         <button class="hud-btn danger" data-act="del"  data-id="${t.id}">✕</button>
       </div>
@@ -156,19 +215,21 @@ function taskCard(t) {
 }
 
 function renderToday() {
-  const list = todayTasks();
+  const list = todayTasks().filter(matchesSearch);
   el('todayGrid').innerHTML = list.map(taskCard).join('');
   el('todayEmpty').hidden = list.length > 0;
   el('todayCount').textContent = `${list.length} ${list.length === 1 ? 'AUFGABE' : 'AUFGABEN'}`;
 
-  const board = boardTasks();
+  const board = boardTasks().filter(matchesSearch);
   el('boardGrid').innerHTML = board.map((t) => `
     <div class="pin-card" draggable="true" data-drag-id="${t.id}">
       <span class="pin"></span>
       <span class="tag ${t.difficulty}">${DIFFICULTY_LABEL[t.difficulty]}</span>
       <div class="task-title">${esc(t.title)}</div>
+      ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ''}
       <div class="card-actions">
         <button class="hud-btn" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
+        <button class="hud-btn" data-act="edit" data-id="${t.id}">✎</button>
         <button class="hud-btn danger" data-act="del" data-id="${t.id}">✕</button>
       </div>
     </div>`).join('');
@@ -270,7 +331,9 @@ export function toast(msg) {
 export function renderAll() {
   renderPlayer();
   renderQuests();
-  if (viewState.active === 'today') { renderToday(); renderTimeline(); }
+  if (viewState.active === 'today') {
+    renderToday(); renderTimeline(); renderPrayerPanel(); renderStats();
+  }
   if (viewState.active === 'week')  renderWeek();
   if (viewState.active === 'month') renderMonth();
 

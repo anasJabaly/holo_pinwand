@@ -68,10 +68,22 @@ export const prayerTimes = {
     }
   },
 
-  /** Für die Timeline: Gebete eines Tages als fixe Blöcke */
-  blocksFor(iso) {
+  /** Für das HUD-Panel: reine Liste der Zeiten */
+  listFor(iso) {
     const s = getState();
     if (!s.settings.prayerEnabled) return [];
+    return s.prayerCache[iso] || [];
+  },
+
+  /** Umschalten: Gebete zusätzlich als Blöcke in der Timeline zeigen? */
+  toggleTimeline() {
+    update((s) => { s.settings.showPrayerInTimeline = !s.settings.showPrayerInTimeline; });
+  },
+
+  /** Für die Timeline: Gebete als fixe Blöcke – NUR wenn Option aktiv */
+  blocksFor(iso) {
+    const s = getState();
+    if (!s.settings.prayerEnabled || !s.settings.showPrayerInTimeline) return [];
     return (s.prayerCache[iso] || []).map((p) => ({
       kind: 'prayer',
       title: p.name,

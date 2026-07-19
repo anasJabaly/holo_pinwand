@@ -30,6 +30,54 @@ export function findTask(id) {
   return getState().tasks.find((t) => t.id === id) || null;
 }
 
+/** ISO-Datum um n Tage verschieben */
+function addDaysISO(iso, n) {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toLocaleDateString('sv-SE');
+}
+
+/** Task bearbeiten (Titel, Schwierigkeit, Datum, Notizen, Wiederholung) */
+export function editTask(id, fields) {
+  update((s) => {
+    const t = s.tasks.find((x) => x.id === id);
+    if (!t) return;
+    if (fields.title !== undefined) {
+      const clean = String(fields.title).trim().slice(0, 160);
+      if (clean) t.title = clean;
+    }
+    if (fields.difficulty !== undefined) t.difficulty = fields.difficulty;
+    if (fields.notes !== undefined) t.notes = String(fields.notes).slice(0, 500);
+    if (fields.recur !== undefined) t.recur = fields.recur || null;
+    if (fields.dueDate !== undefined) {
+      t.dueDate = fields.dueDate || null;
+      if (!t.dueDate) t.plan = null;
+    }
+  });
+  refreshQuestProgress();
+}
+
+/**
+ * Wiederkehrende Tasks (recur: 'daily' | 'weekly') beim App-Start
+ * nach vorn rollen: Fälligkeit in der Vergangenheit → auf heute/nächsten
+ * Termin schieben und wieder öffnen. Zeitblock (plan) bleibt erhalten.
+ */
+export function rolloverRecurring() {
+  const today = todayISO();
+  update((s) => {
+    s.tasks.forEach((t) => {
+      if (!t.recur || !t.dueDate || t.dueDate >= today) return;
+      if (t.recur === 'daily') {
+        t.dueDate = today;
+      } else {
+        while (t.dueDate < today) t.dueDate = addDaysISO(t.dueDate, 7);
+      }
+      t.done = false;
+      t.doneAt = null;
+    });
+  });
+}
+
 export function deleteTask(id) {
   update((s) => { s.tasks = s.tasks.filter((t) => t.id !== id); });
   refreshQuestProgress();
