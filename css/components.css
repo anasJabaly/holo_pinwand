@@ -185,7 +185,9 @@
   display: inline-grid; place-items: center;
   font-size: 10px; color: var(--done); flex: none;
 }
-.quest.done { color: var(--text-dim); text-decoration: line-through; }
+.quest.done { opacity: 0.55; }
+.quest.done .q-label { text-decoration: line-through; text-decoration-color: rgba(127,160,181,0.6); }
+.quest.done .q-xp, .quest.done .q-progress { text-decoration: none; }
 .quest .q-xp { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--amber); }
 
 /* ── Timeline (Heute) & Planner-Raster ── */
@@ -440,3 +442,169 @@ select.form-input { font-family: var(--font-mono); font-size: 12px; }
   display: flex; align-items: center; gap: 8px;
   font-size: 11px; padding: 1px 8px;
 }
+
+/* ═══ v4: Block-Layout-Fix, Chips, Detail, Boot-Screen, Gebets-Modal ═══ */
+
+/* Timeline-Blöcke: feste Kopfzeile Zeit · Badge · Titel, nichts überlappt */
+.tl-block { padding: 4px 8px; font-weight: 500; }
+.tlb-head {
+  display: flex; align-items: center; gap: 8px;
+  min-width: 0; white-space: nowrap;
+}
+.tlb-time { font-family: var(--font-mono); font-size: 10px; color: var(--holo); flex: none; }
+.tl-block.prayer .tlb-time { color: var(--prayer); }
+.tlb-badge { font-size: 10px; flex: none; color: var(--amber); }
+.tl-block.prayer .tlb-badge { color: var(--prayer); }
+.tlb-title {
+  font-size: 13px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.tl-block.compact { padding: 1px 8px; display: flex; align-items: center; }
+.tl-block.compact .tlb-head { width: 100%; }
+
+/* Block-Aktionen: nur bei Hover/Fokus, schweben oben rechts – nie abgeschnitten */
+.tlb-actions {
+  display: none; position: absolute; top: 2px; right: 3px; gap: 2px; z-index: 4;
+  background: var(--bg-solid); border: 1px solid var(--holo-line); padding: 1px;
+}
+.tl-block:hover .tlb-actions, .tl-block:focus-within .tlb-actions { display: flex; }
+.tlb-x {
+  background: transparent; border: none; color: var(--text-dim);
+  font-family: var(--font-mono); font-size: 11px; width: 22px; height: 20px;
+  cursor: pointer; display: grid; place-items: center;
+}
+.tlb-x:hover { color: var(--holo); }
+
+/* Termine (manuelle Einträge) */
+.tl-block.event {
+  background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(13,27,42,0.7));
+  border-color: rgba(127,160,181,0.3);
+}
+.tl-block.event .tlb-time { color: var(--ev-c, var(--text-dim)); }
+
+/* Chips (Badges auf Karten): klein, ruhig, informativ */
+.chip-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px;
+  color: var(--text-dim); border: 1px solid var(--holo-line);
+  padding: 2px 7px; white-space: nowrap;
+}
+.chip .g-dot, .g-dot {
+  width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+  background: var(--g, var(--holo)); box-shadow: 0 0 6px var(--g, var(--holo-dim));
+}
+.chip-xp { margin-left: auto; }
+.chip-over { color: var(--danger); border-color: rgba(255,107,107,0.4); }
+.chip-today { color: var(--amber); border-color: var(--amber-dim); }
+.chip-prog { color: var(--amber); border-color: var(--amber-dim); }
+.chip.p-urgent { color: var(--danger); border-color: rgba(255,107,107,0.45); }
+.chip.p-high { color: var(--amber); border-color: var(--amber-dim); }
+.chip.p-low { opacity: 0.7; }
+
+/* Karten: ruhig – ein Haken, Rest über Klick → Detail */
+.holo-card { cursor: pointer; }
+.holo-card .card-check { margin-top: 13px; width: 100%; background: transparent; }
+.pin-card .card-check { margin-top: 11px; width: 100%; background: transparent; }
+.holo-card:focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
+
+/* Überfällig */
+.rule-danger { background: linear-gradient(90deg, rgba(255,107,107,0.4), transparent) !important; }
+.overdue-wrap { margin-bottom: 26px; }
+.over-row {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid rgba(255,107,107,0.3);
+  background: rgba(255,107,107,0.05);
+  padding: 8px 12px; margin-bottom: 8px; cursor: pointer;
+}
+.over-title { flex: 1; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Detailansicht */
+.detail-title {
+  flex: 1; background: transparent; border: 1px solid transparent;
+  color: var(--text); font-family: var(--font-ui);
+  font-size: 19px; font-weight: 600; padding: 4px 8px; min-width: 0;
+}
+.detail-title:hover, .detail-title:focus { border-color: var(--holo-line); outline: none; }
+.status-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.subtask {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 2px; font-size: 15px;
+  border-bottom: 1px solid rgba(95,227,255,0.06);
+}
+.subtask.done .sub-title { color: var(--text-dim); text-decoration: line-through; }
+.sub-check {
+  width: 17px; height: 17px; flex: none; cursor: pointer;
+  background: transparent; border: 1px solid var(--holo-dim);
+  color: var(--done); font-size: 11px; display: grid; place-items: center;
+}
+.sub-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.detail-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 8px; padding-top: 12px;
+  border-top: 1px solid var(--holo-line);
+}
+
+/* Gebetszeiten-Modal */
+.prayer-countdown {
+  font-size: 12px; letter-spacing: 2px; color: var(--prayer);
+  border: 1px solid var(--prayer-dim); padding: 8px 12px;
+  text-align: center; margin-bottom: 14px;
+}
+.prayer-modal-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 2px; border-bottom: 1px solid rgba(95,227,255,0.06);
+}
+.prayer-modal-row .p-name { flex: 1; font-size: 16px; font-weight: 600; }
+.prayer-modal-row .p-time { color: var(--text-dim); }
+.prayer-modal-row.adopted .p-name { color: var(--prayer); }
+
+/* Gruppen-Verwaltung */
+.group-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 2px; border-bottom: 1px solid rgba(95,227,255,0.06);
+}
+.group-row .g-name { flex: 1; font-weight: 600; font-size: 15px; }
+.group-row .g-color { width: 110px; font-size: 10px; padding: 5px; }
+
+/* Nav-Select im Button-Stil */
+select.hud-btn { appearance: none; -webkit-appearance: none; }
+
+/* Boot-Screen */
+.boot-screen {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg-deep);
+  display: grid; place-items: center;
+  transition: opacity 0.35s ease;
+}
+.boot-screen.boot-hide { opacity: 0; pointer-events: none; }
+.boot-content { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 20px; text-align: center; }
+.boot-ring {
+  width: 130px; height: 130px; border-radius: 50%;
+  border: 2px solid var(--holo-line);
+  border-top-color: var(--holo);
+  display: grid; place-items: center;
+  animation: boot-spin 1.2s cubic-bezier(.4,.1,.3,1) 2, boot-glow 2.4s ease forwards;
+}
+.boot-core {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(95,227,255,0.9), rgba(95,227,255,0.15) 70%);
+  box-shadow: 0 0 40px var(--holo-dim);
+  animation: boot-core 2.4s ease forwards;
+}
+@keyframes boot-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes boot-glow { 0% { box-shadow: none; } 100% { box-shadow: 0 0 60px rgba(95,227,255,0.25); border-color: var(--holo-dim); border-top-color: var(--holo); } }
+@keyframes boot-core { 0% { transform: scale(0.4); opacity: 0.3; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+.boot-line {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 6px;
+  color: var(--holo); animation: boot-fade 0.8s ease 0.5s both;
+}
+.boot-welcome { font-size: 24px; font-weight: 600; letter-spacing: 1px; animation: boot-fade 0.8s ease 0.9s both; }
+.boot-stats {
+  display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; color: var(--text-dim);
+  animation: boot-fade 0.8s ease 1.2s both;
+}
+.boot-skip { font-size: 9px; letter-spacing: 2px; animation: boot-fade 0.8s ease 1.6s both; }
+.boot-form { display: flex; flex-direction: column; gap: 12px; width: min(300px, 90vw); animation: boot-fade 0.8s ease 0.6s both; }
+@keyframes boot-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

@@ -14,6 +14,11 @@
 <div class="grid-bg"></div>
 <div class="glow-orb"></div>
 
+<!-- ═══ Boot-Screen ═══ -->
+<div class="boot-screen" id="bootScreen">
+  <div class="boot-content" id="bootContent"></div>
+</div>
+
 <div class="app">
 
   <!-- ═══ HUD-Kopfzeile ═══ -->
@@ -22,7 +27,6 @@
       <h1>Holo&#8209;Pinnwand</h1>
       <div class="sub" id="greeting">SYSTEM BEREIT</div>
     </div>
-
     <div class="player-meta">
       <div class="rank-badge" id="rankBadge">E</div>
       <div class="reactor-wrap">
@@ -43,17 +47,16 @@
       </div>
       <div class="streak" id="streakBox">STREAK <b>—</b></div>
     </div>
-
     <div class="clock">
       <div class="time" id="clockTime">--:--:--</div>
       <div class="date" id="clockDate"></div>
     </div>
   </header>
 
-  <!-- ═══ Kommandozeile ═══ -->
+  <!-- ═══ Schnelleingabe ═══ -->
   <div class="cmd">
     <div class="prompt" aria-hidden="true">&gt;</div>
-    <input type="text" id="taskInput" placeholder="Neue Aufgabe eingeben …" maxlength="160" aria-label="Neue Aufgabe">
+    <input type="text" id="taskInput" placeholder="Neue Aufgabe … (#gruppe möglich, z. B. Übungsblatt 5 #swp)" maxlength="160" aria-label="Neue Aufgabe">
     <select id="taskWhere" aria-label="Ziel">
       <option value="today">HEUTE</option>
       <option value="date">DATUM …</option>
@@ -68,16 +71,18 @@
     <button class="hud-btn primary" id="addBtn">Hinzufügen</button>
   </div>
 
-  <!-- ═══ View-Navigation ═══ -->
+  <!-- ═══ Navigation ═══ -->
   <nav class="view-nav">
     <button class="hud-btn" data-view="today">◈ HEUTE</button>
     <button class="hud-btn" data-view="week">▤ WOCHE</button>
     <button class="hud-btn" data-view="month">▦ MONAT</button>
+    <select class="hud-btn" id="groupFilter" aria-label="Nach Gruppe filtern"></select>
     <input type="text" class="search-input" id="searchInput" placeholder="⌕ SUCHEN …" aria-label="Aufgaben durchsuchen">
     <span class="spacer"></span>
     <button class="hud-btn" id="planDayBtn">◷ TAG PLANEN</button>
-    <button class="hud-btn" id="prayerBtn" title="Gebetszeiten als feste Blöcke">☾ GEBETSZEITEN</button>
-    <button class="hud-btn" id="notifyBtn" title="Browser-Erinnerung 10 Min vor Zeitblöcken">◉ ERINNERUNGEN</button>
+    <button class="hud-btn" id="groupsBtn">⬡ GRUPPEN</button>
+    <button class="hud-btn" id="prayerBtn" title="Gebetszeiten-Vorschau">☾</button>
+    <button class="hud-btn" id="notifyBtn" title="Erinnerung 10 Min vor Zeitblöcken">◉</button>
   </nav>
 
   <!-- ═══ VIEW: HEUTE ═══ -->
@@ -96,6 +101,14 @@
       </div>
 
       <div>
+        <div class="overdue-wrap" id="overdueWrap" hidden>
+          <div class="section-head" style="margin-top:0">
+            <h2 style="color:var(--danger)"><span style="color:var(--danger)">⚠</span> Überfällig</h2>
+            <div class="rule rule-danger"></div>
+          </div>
+          <div id="overdueList"></div>
+        </div>
+
         <div class="section-head" style="margin-top:0">
           <h2><span>◈</span> Heute im Fokus</h2>
           <div class="rule"></div>
@@ -104,7 +117,7 @@
         <div class="today-grid" id="todayGrid"></div>
         <div class="empty" id="todayEmpty" hidden>
           <span class="big">KEINE MISSION AKTIV</span>
-          Füge oben eine Aufgabe hinzu oder hole eine von der Pinnwand.
+          Aufgabe oben eintippen — oder im Zeitplan links auf eine Uhrzeit klicken.
         </div>
 
         <div class="section-head">
@@ -116,7 +129,7 @@
           <div class="board-grid" id="boardGrid"></div>
           <div class="empty" id="boardEmpty" hidden>
             <span class="big">PINNWAND LEER</span>
-            Alles, was noch kein Datum hat, landet hier.
+            Ideen ohne Datum landen hier — Ziel "PINNWAND" in der Eingabe wählen.
           </div>
         </div>
       </div>
@@ -156,10 +169,10 @@
     </div>
   </section>
 
-  <div class="storage-note">⬡ SPEICHER: LOKAL IN DEINEM BROWSER (localStorage) · SCHEMA V2</div>
+  <div class="storage-note">⬡ SPEICHER: LOKAL IN DEINEM BROWSER · SCHEMA V3</div>
 </div>
 
-<!-- ═══ Tagesplaner-Overlay ═══ -->
+<!-- ═══ Tagesplaner ═══ -->
 <div class="overlay" id="plannerOverlay" hidden>
   <div class="modal">
     <div class="modal-head">
@@ -182,19 +195,22 @@
   </div>
 </div>
 
-<!-- ═══ Quick-Add-Overlay (Klick auf Zeitslot) ═══ -->
+<!-- ═══ Quick-Add (Klick auf Zeitslot) ═══ -->
 <div class="overlay" id="quickAddOverlay" hidden>
-  <div class="modal" style="width:min(420px,100%)">
+  <div class="modal" style="width:min(440px,100%)">
     <div class="modal-head">
       <h3>＋ Neuer Eintrag</h3>
       <span class="mono dim" id="quickTimeLabel" style="font-size:11px; letter-spacing:2px"></span>
     </div>
     <div class="modal-body">
-      <div class="form-row">
-        <label for="quickTitle">WAS STEHT AN?</label>
-        <input type="text" class="form-input" id="quickTitle" maxlength="160" placeholder="z. B. CG-Übungsblatt">
-      </div>
       <div class="form-row-inline">
+        <div class="form-row">
+          <label for="quickType">TYP</label>
+          <select class="form-input" id="quickType">
+            <option value="task">AUFGABE (MIT XP)</option>
+            <option value="event">TERMIN (VORLESUNG, GYM …)</option>
+          </select>
+        </div>
         <div class="form-row">
           <label for="quickDur">DAUER</label>
           <select class="form-input" id="quickDur">
@@ -204,14 +220,28 @@
             <option value="120">120 MIN</option>
           </select>
         </div>
-        <div class="form-row">
-          <label for="quickDiff">SCHWIERIGKEIT</label>
-          <select class="form-input" id="quickDiff">
-            <option value="easy">LEICHT · 10 XP</option>
-            <option value="medium" selected>MITTEL · 25 XP</option>
-            <option value="hard">SCHWER · 50 XP</option>
-          </select>
-        </div>
+      </div>
+      <div class="form-row">
+        <label for="quickTitle">TITEL</label>
+        <input type="text" class="form-input" id="quickTitle" maxlength="160" placeholder="z. B. CG-Übungsblatt #swp">
+      </div>
+      <div class="form-row" id="quickDiffRow">
+        <label for="quickDiff">SCHWIERIGKEIT</label>
+        <select class="form-input" id="quickDiff">
+          <option value="easy">LEICHT · 10 XP</option>
+          <option value="medium" selected>MITTEL · 25 XP</option>
+          <option value="hard">SCHWER · 50 XP</option>
+        </select>
+      </div>
+      <div class="form-row" id="quickColorRow" hidden>
+        <label for="quickColor">FARBE</label>
+        <select class="form-input" id="quickColor">
+          <option value="cyan">CYAN</option>
+          <option value="amber">AMBER</option>
+          <option value="rot">ROT</option>
+          <option value="gruen">GRÜN</option>
+          <option value="lila">LILA</option>
+        </select>
       </div>
       <div class="card-actions" style="margin-top:6px">
         <button class="hud-btn primary" id="quickAddBtn">EINPLANEN</button>
@@ -221,52 +251,127 @@
   </div>
 </div>
 
-<!-- ═══ Edit-Overlay (Task bearbeiten) ═══ -->
-<div class="overlay" id="editOverlay" hidden>
-  <div class="modal" style="width:min(460px,100%)">
-    <div class="modal-head">
-      <h3>✎ Aufgabe bearbeiten</h3>
-      <button class="hud-btn small" id="editCancel">✕</button>
-    </div>
+<!-- ═══ Termin bearbeiten ═══ -->
+<div class="overlay" id="eventOverlay" hidden>
+  <div class="modal" style="width:min(420px,100%)">
+    <div class="modal-head"><h3>✎ Termin</h3><button class="hud-btn small" id="evCancel">✕</button></div>
     <div class="modal-body">
-      <div class="form-row">
-        <label for="editTitle">TITEL</label>
-        <input type="text" class="form-input" id="editTitle" maxlength="160">
-      </div>
+      <div class="form-row"><label for="evTitle">TITEL</label>
+        <input type="text" class="form-input" id="evTitle" maxlength="120"></div>
       <div class="form-row-inline">
-        <div class="form-row">
-          <label for="editDiff">SCHWIERIGKEIT</label>
-          <select class="form-input" id="editDiff">
-            <option value="easy">LEICHT · 10 XP</option>
-            <option value="medium">MITTEL · 25 XP</option>
-            <option value="hard">SCHWER · 50 XP</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="editDate">DATUM (LEER = PINNWAND)</label>
-          <input type="date" class="form-input" id="editDate">
-        </div>
+        <div class="form-row"><label for="evStart">BEGINN</label>
+          <input type="time" class="form-input" id="evStart" step="900"></div>
+        <div class="form-row"><label for="evDur">DAUER</label>
+          <select class="form-input" id="evDur">
+            <option value="30">30 MIN</option><option value="60">60 MIN</option>
+            <option value="90">90 MIN</option><option value="120">120 MIN</option>
+            <option value="180">180 MIN</option>
+          </select></div>
+        <div class="form-row"><label for="evColor">FARBE</label>
+          <select class="form-input" id="evColor">
+            <option value="cyan">CYAN</option><option value="amber">AMBER</option>
+            <option value="rot">ROT</option><option value="gruen">GRÜN</option>
+            <option value="lila">LILA</option>
+          </select></div>
       </div>
-      <div class="form-row">
-        <label for="editRecur">WIEDERHOLUNG</label>
-        <select class="form-input" id="editRecur">
-          <option value="">KEINE</option>
-          <option value="daily">↻ TÄGLICH</option>
-          <option value="weekly">↻ WÖCHENTLICH</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label for="editNotes">NOTIZEN</label>
-        <textarea class="form-input" id="editNotes" rows="3" maxlength="500" placeholder="Details, Links, Gedanken …"></textarea>
-      </div>
-      <div class="card-actions" style="margin-top:6px">
-        <button class="hud-btn primary" id="editSaveBtn">SPEICHERN</button>
+      <div class="card-actions">
+        <button class="hud-btn primary" id="evSave">SPEICHERN</button>
+        <button class="hud-btn danger" id="evDelete">LÖSCHEN</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ═══ Level-Up-Overlay + Toast ═══ -->
+<!-- ═══ Gebetszeiten-Vorschau ═══ -->
+<div class="overlay" id="prayerOverlay" hidden>
+  <div class="modal" style="width:min(420px,100%)">
+    <div class="modal-head">
+      <h3 style="color:var(--prayer)">☾ Gebetszeiten heute</h3>
+      <button class="hud-btn small" id="prayerClose">✕</button>
+    </div>
+    <div class="modal-body" id="prayerModalBody"></div>
+  </div>
+</div>
+
+<!-- ═══ Gruppen-Verwaltung ═══ -->
+<div class="overlay" id="groupsOverlay" hidden>
+  <div class="modal" style="width:min(480px,100%)">
+    <div class="modal-head"><h3>⬡ Gruppen</h3><button class="hud-btn small" id="groupsClose">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row-inline" style="align-items:flex-end">
+        <div class="form-row" style="margin-bottom:0">
+          <label for="newGroupName">NEUE GRUPPE</label>
+          <input type="text" class="form-input" id="newGroupName" maxlength="40" placeholder="z. B. SWP, Mathe 2, Deen …">
+        </div>
+        <button class="hud-btn primary" id="newGroupBtn" style="height:40px">ANLEGEN</button>
+      </div>
+      <div style="margin-top:16px" id="groupsBody"></div>
+      <p class="mono dim" style="font-size:10px; margin-top:12px; letter-spacing:1px">
+        TIPP: #KÜRZEL IM AUFGABENTITEL WEIST DIE GRUPPE DIREKT ZU.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Task-Detailansicht ═══ -->
+<div class="overlay" id="detailOverlay" hidden>
+  <div class="modal" style="width:min(560px,100%)">
+    <div class="modal-head">
+      <input type="text" class="detail-title" id="dTitle" maxlength="160" aria-label="Titel">
+      <button class="hud-btn small" id="dClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row"><label>STATUS</label><div class="status-row" id="dStatus"></div></div>
+      <div class="form-row-inline">
+        <div class="form-row"><label for="dPriority">PRIORITÄT</label>
+          <select class="form-input" id="dPriority">
+            <option value="urgent">⚑ DRINGEND</option>
+            <option value="high">⚑ HOCH</option>
+            <option value="normal">NORMAL</option>
+            <option value="low">NIEDRIG</option>
+          </select></div>
+        <div class="form-row"><label for="dDiff">SCHWIERIGKEIT</label>
+          <select class="form-input" id="dDiff">
+            <option value="easy">LEICHT · 10 XP</option>
+            <option value="medium">MITTEL · 25 XP</option>
+            <option value="hard">SCHWER · 50 XP</option>
+          </select></div>
+        <div class="form-row"><label for="dGroup">GRUPPE</label>
+          <select class="form-input" id="dGroup"></select></div>
+      </div>
+      <div class="form-row-inline">
+        <div class="form-row"><label for="dDue">FÄLLIG BIS (LEER = PINNWAND)</label>
+          <input type="date" class="form-input" id="dDue"></div>
+        <div class="form-row"><label for="dDueTime">UHRZEIT</label>
+          <input type="time" class="form-input" id="dDueTime"></div>
+        <div class="form-row"><label for="dRecur">WIEDERHOLUNG</label>
+          <select class="form-input" id="dRecur">
+            <option value="">KEINE</option>
+            <option value="daily">↻ TÄGLICH</option>
+            <option value="weekly">↻ WÖCHENTLICH</option>
+          </select></div>
+      </div>
+      <div class="mono dim" id="dPlanInfo" style="font-size:11px; letter-spacing:1px; margin-bottom:14px"></div>
+      <div class="form-row">
+        <label for="dNotes">NOTIZEN</label>
+        <textarea class="form-input" id="dNotes" rows="3" maxlength="2000" placeholder="Beschreibung, Links, Gedanken …"></textarea>
+      </div>
+      <div class="form-row">
+        <label>CHECKLISTE <span class="mono" id="dSubProgress" style="color:var(--holo)"></span></label>
+        <div id="dSubs"></div>
+        <div class="form-row-inline" style="margin-top:6px">
+          <input type="text" class="form-input" id="dSubInput" maxlength="120" placeholder="＋ Unterpunkt hinzufügen …">
+          <button class="hud-btn" id="dSubAdd" style="height:40px">＋</button>
+        </div>
+      </div>
+      <div class="detail-foot">
+        <span class="mono dim" id="dMeta" style="font-size:10px; letter-spacing:1px"></span>
+        <button class="hud-btn small danger" id="dDelete">AUFGABE LÖSCHEN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="levelup" id="levelup" hidden></div>
 <div class="toast" id="toast" hidden></div>
 

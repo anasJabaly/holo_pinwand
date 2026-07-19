@@ -75,16 +75,35 @@ export const prayerTimes = {
     return s.prayerCache[iso] || [];
   },
 
-  /** Umschalten: Gebete zusätzlich als Blöcke in der Timeline zeigen? */
-  toggleTimeline() {
-    update((s) => { s.settings.showPrayerInTimeline = !s.settings.showPrayerInTimeline; });
+  /** Ist dieses Gebet für den Tag in den Plan übernommen? */
+  isAdopted(iso, name) {
+    return (getState().prayerAdopted[iso] || []).includes(name);
   },
 
-  /** Für die Timeline: Gebete als fixe Blöcke – NUR wenn Option aktiv */
+  /** Einzelnes Gebet in den Tagesplan übernehmen / entfernen */
+  adopt(iso, name, on) {
+    update((s) => {
+      const list = s.prayerAdopted[iso] || [];
+      s.prayerAdopted[iso] = on
+        ? [...new Set([...list, name])]
+        : list.filter((x) => x !== name);
+    });
+  },
+
+  /** Alle Gebete des Tages übernehmen */
+  adoptAll(iso) {
+    const names = this.listFor(iso).map((p) => p.name);
+    update((s) => { s.prayerAdopted[iso] = names; });
+  },
+
+  /** Für die Timeline: NUR vom Nutzer bestätigte Gebete als Blöcke */
   blocksFor(iso) {
     const s = getState();
-    if (!s.settings.prayerEnabled || !s.settings.showPrayerInTimeline) return [];
-    return (s.prayerCache[iso] || []).map((p) => ({
+    if (!s.settings.prayerEnabled) return [];
+    const adopted = s.prayerAdopted[iso] || [];
+    return (s.prayerCache[iso] || [])
+      .filter((p) => adopted.includes(p.name))
+      .map((p) => ({
       kind: 'prayer',
       title: p.name,
       start: p.time,

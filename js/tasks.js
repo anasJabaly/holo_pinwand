@@ -9,14 +9,20 @@ import { getState, update, todayISO } from './state.js';
 import { addXp, touchStreak, refreshQuestProgress, XP_BY_DIFFICULTY } from './leveling.js';
 
 /** Neuen Task anlegen */
-export function addTask({ title, difficulty = 'medium', dueDate = null }) {
+export function addTask({ title, difficulty = 'medium', dueDate = null, groupId = null, priority = 'normal' }) {
   const clean = String(title || '').trim().slice(0, 160);
   if (!clean) return null;
   const task = {
     id: crypto.randomUUID(),
     title: clean,
     difficulty,
+    priority,         // urgent | high | normal | low
+    status: 'open',   // open | progress | done
+    groupId,
+    subtasks: [],
+    notes: '',
     dueDate,          // null = Pinnwand
+    dueTime: null,
     plan: null,
     done: false,
     doneAt: null,
@@ -47,6 +53,9 @@ export function editTask(id, fields) {
       if (clean) t.title = clean;
     }
     if (fields.difficulty !== undefined) t.difficulty = fields.difficulty;
+    if (fields.priority !== undefined) t.priority = fields.priority;
+    if (fields.groupId !== undefined) t.groupId = fields.groupId || null;
+    if (fields.dueTime !== undefined) t.dueTime = fields.dueTime || null;
     if (fields.notes !== undefined) t.notes = String(fields.notes).slice(0, 500);
     if (fields.recur !== undefined) t.recur = fields.recur || null;
     if (fields.dueDate !== undefined) {
@@ -84,19 +93,23 @@ export function deleteTask(id) {
 }
 
 /**
- * Erledigt-Status umschalten.
+ * Status setzen (open | progress | done) mit XP-Kopplung.
  * Rückgabe: { levelUps, xpDelta } für UI-Feedback.
  */
-export function toggleDone(id) {
+export function setStatus(id, status) {
   const t = findTask(id);
   if (!t) return { levelUps: 0, xpDelta: 0 };
+  const wasDone = t.status === 'done';
+  const nowDone = status === 'done';
 
-  const nowDone = !t.done;
   update((s) => {
     const task = s.tasks.find((x) => x.id === id);
-    task.done = nowDone;
+    task.status = status;
+    task.done = nowDone;            // Kompatibilität zu Quests/Streaks
     task.doneAt = nowDone ? Date.now() : null;
   });
+
+  if (wasDone === nowDone) { refreshQuestProgress(); return { levelUps: 0, xpDelta: 0 }; }
 
   const base = XP_BY_DIFFICULTY[t.difficulty] || 25;
   let xpDelta = nowDone ? base : -base;
@@ -111,6 +124,44 @@ export function toggleDone(id) {
     levelUps += addXp(bonus);
   }
   return { levelUps, xpDelta };
+}
+
+/** Karten-Haken: offen/in Arbeit ⇄ erledigt */
+export function toggleDone(id) {
+  const t = findTask(id);
+  return setStatus(id, t && t.status === 'done' ? 'open' : 'done');
+}
+
+/* ── Subtasks (Checkliste wie in ClickUp) ── */
+
+export function addSubtask(taskId, title) {
+  const clean = String(title || '').trim().slice(0, 120);
+  if (!clean) return;
+  update((s) => {
+    const t = s.tasks.find((x) => x.id === taskId);
+    if (t) t.subtasks.push({ id: crypto.randomUUID(), title: clean, done: false });
+  });
+}
+
+export function toggleSubtask(taskId, subId) {
+  update((s) => {
+    const t = s.tasks.find((x) => x.id === taskId);
+    const st = t && t.subtasks.find((x) => x.id === subId);
+    if (st) st.done = !st.done;
+  });
+}
+
+export function deleteSubtask(taskId, subId) {
+  update((s) => {
+    const t = s.tasks.find((x) => x.id === taskId);
+    if (t) t.subtasks = t.subtasks.filter((x) => x.id !== subId);
+  });
+}
+
+/** Überfällig: Deadline vergangen und nicht erledigt */
+export function overdueTasks() {
+  const today = todayISO();
+  return getState().tasks.filter((t) => t.dueDate && t.dueDate < today && t.status !== 'done');
 }
 
 /** Task auf ein Datum legen (oder mit null zurück auf die Pinnwand) */

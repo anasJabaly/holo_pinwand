@@ -11,7 +11,8 @@ import {
   toMinutes, conflictIds,
 } from './tasks.js';
 import { prayerTimes } from './integrations.js';
-import { esc, minToHHMM, pxPerMin } from './ui.js';
+import { esc, minToHHMM, pxPerMin, tlBlock } from './ui.js';
+import { eventsForDate, EVENT_COLORS } from './events.js';
 
 let selectedTaskId = null;
 
@@ -35,7 +36,7 @@ export function renderPlanner() {
   const ppm = pxPerMin();
 
   /* ── Linke Spalte: ungeplante Tasks ── */
-  const pool = todayTasks().filter((t) => !t.plan && !t.done);
+  const pool = todayTasks().filter((t) => !t.plan && t.status !== 'done');
   el('plannerPool').innerHTML = pool.length
     ? pool.map((t) => `
         <div class="pool-task ${t.id === selectedTaskId ? 'selected' : ''}"
@@ -64,32 +65,43 @@ export function renderPlanner() {
                   title="${minToHHMM(m)}"></div>`;
   }
 
-  // Gebets-Blöcke (fix, nicht verschiebbar)
+  // Gebets-Blöcke (übernommene; per ✕ wieder entfernbar)
   prayerTimes.blocksFor(todayISO()).forEach((b) => {
     const top = (toMinutes(b.start) - startMin) * ppm;
     if (top < 0) return;
-    html += `
-      <div class="tl-block prayer" style="top:${top}px; height:${b.durationMin * ppm}px">
-        <span class="tl-time">${b.start} · FEST</span> ${esc(b.title)}
-      </div>`;
+    html += tlBlock({
+      top, height: b.durationMin * ppm,
+      cls: 'prayer', time: b.start, badge: '☾', title: esc(b.title),
+      actions: `<button class="tlb-x" data-prayer-remove="${esc(b.title)}" title="Aus Plan entfernen">✕</button>`,
+    });
   });
 
-  // Geplante Task-Blöcke
+  // Manuelle Termine
+  eventsForDate(todayISO()).forEach((ev) => {
+    html += tlBlock({
+      top: (toMinutes(ev.start) - startMin) * ppm,
+      height: ev.durationMin * ppm,
+      cls: 'event', time: ev.start, badge: '', title: esc(ev.title),
+      style: `border-left:3px solid ${EVENT_COLORS[ev.color]};`,
+      actions: `<button class="tlb-x" data-event-id="${ev.id}" title="Bearbeiten">✎</button>`,
+    });
+  });
+
+  // Geplante Task-Blöcke (Aktionen erscheinen bei Hover, nichts wird abgeschnitten)
   const conflicts = conflictIds(todayISO());
   todayTasks().filter((t) => t.plan).forEach((t) => {
-    const top = (toMinutes(t.plan.start) - startMin) * ppm;
-    html += `
-      <div class="tl-block ${conflicts.has(t.id) ? 'conflict' : ''} ${t.done ? 'done' : ''}"
-           style="top:${top}px; height:${t.plan.durationMin * ppm}px">
-        <span class="tl-time">${t.plan.start} · ${t.plan.durationMin} MIN
-          ${conflicts.has(t.id) ? '· ⚠ KONFLIKT' : ''}</span>
-        ${esc(t.title)}
-        <div class="card-actions">
-          <button class="hud-btn small" data-plan-act="minus" data-id="${t.id}">−30</button>
-          <button class="hud-btn small" data-plan-act="plus"  data-id="${t.id}">+30</button>
-          <button class="hud-btn small danger" data-plan-act="remove" data-id="${t.id}">ENTFERNEN</button>
-        </div>
-      </div>`;
+    html += tlBlock({
+      top: (toMinutes(t.plan.start) - startMin) * ppm,
+      height: t.plan.durationMin * ppm,
+      cls: `${conflicts.has(t.id) ? 'conflict' : ''} ${t.status === 'done' ? 'done' : ''}`,
+      time: `${t.plan.start} · ${t.plan.durationMin}′`,
+      badge: conflicts.has(t.id) ? '⚠' : '',
+      title: esc(t.title),
+      actions: `
+        <button class="tlb-x" data-plan-act="minus" data-id="${t.id}" title="30 Min kürzer">−</button>
+        <button class="tlb-x" data-plan-act="plus" data-id="${t.id}" title="30 Min länger">＋</button>
+        <button class="tlb-x" data-plan-act="remove" data-id="${t.id}" title="Aus Plan entfernen">✕</button>`,
+    });
   });
 
   grid.style.height = `${totalMin * ppm}px`;
