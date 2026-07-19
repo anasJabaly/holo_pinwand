@@ -1,0 +1,84 @@
+/* ═══════════════════════════════════════════════════════
+   HOLO-PINNWAND · base.css
+   Design-Tokens, Reset, Typografie, HUD-Grundstimmung
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* Farben */
+  --bg-deep:    #060B14;
+  --bg-panel:   rgba(13, 27, 42, 0.55);
+  --bg-solid:   #0B1624;
+  --holo:       #5FE3FF;
+  --holo-dim:   rgba(95, 227, 255, 0.35);
+  --holo-line:  rgba(95, 227, 255, 0.14);
+  --amber:      #FFB547;
+  --amber-dim:  rgba(255, 181, 71, 0.35);
+  --prayer:     #7BE8A8;
+  --prayer-dim: rgba(123, 232, 168, 0.35);
+  --danger:     #FF6B6B;
+  --done:       #4ADE80;
+  --text:       #DCEAF2;
+  --text-dim:   #7FA0B5;
+
+  /* Typografie */
+  --font-ui:    'Rajdhani', sans-serif;
+  --font-mono:  'Share Tech Mono', monospace;
+
+  /* Zeitplaner: Pixel pro Minute */
+  --min-px: 0.9;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scrollbar-color: var(--holo-dim) transparent; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: var(--font-ui);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button { font-family: inherit; }
+
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--holo);
+  outline-offset: 1px;
+}
+
+/* ── Hintergrund: Holo-Gitter + Glow ── */
+.grid-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--holo-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--holo-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 100%);
+}
+.glow-orb {
+  position: fixed; z-index: 0; pointer-events: none;
+  width: 60vw; height: 60vw; max-width: 700px; max-height: 700px;
+  left: 50%; top: -20%; transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(95,227,255,0.10) 0%, transparent 65%);
+}
+
+/* ── Typo-Utilities ── */
+.mono { font-family: var(--font-mono); }
+.dim  { color: var(--text-dim); }
+
+h1 {
+  font-size: 24px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase;
+  color: var(--holo);
+  text-shadow: 0 0 18px var(--holo-dim);
+}
+
+/* ── Reduzierte Bewegung ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

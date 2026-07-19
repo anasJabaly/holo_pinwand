@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Holo-Pinnwand</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="glow-orb"></div>
+
+<div class="app">
+
+  <!-- ═══ HUD-Kopfzeile ═══ -->
+  <header class="hud-header">
+    <div class="id-block">
+      <h1>Holo&#8209;Pinnwand</h1>
+      <div class="sub" id="greeting">SYSTEM BEREIT</div>
+    </div>
+
+    <div class="player-meta">
+      <div class="rank-badge" id="rankBadge">E</div>
+      <div class="reactor-wrap">
+        <div class="reactor" role="img" aria-label="XP-Fortschritt zum nächsten Level">
+          <svg width="92" height="92" viewBox="0 0 92 92">
+            <circle class="track" cx="46" cy="46" r="40" fill="none" stroke-width="5"/>
+            <circle class="bar" id="reactorBar" cx="46" cy="46" r="40" fill="none" stroke-width="5"
+                    stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+          </svg>
+          <div class="center">
+            <div>
+              <div class="lvl" id="reactorLvl">1</div>
+              <div class="lvl-label">LEVEL</div>
+            </div>
+          </div>
+        </div>
+        <div class="reactor-label" id="reactorXp">0 / 100 XP</div>
+      </div>
+      <div class="streak" id="streakBox">STREAK <b>—</b></div>
+    </div>
+
+    <div class="clock">
+      <div class="time" id="clockTime">--:--:--</div>
+      <div class="date" id="clockDate"></div>
+    </div>
+  </header>
+
+  <!-- ═══ Kommandozeile ═══ -->
+  <div class="cmd">
+    <div class="prompt" aria-hidden="true">&gt;</div>
+    <input type="text" id="taskInput" placeholder="Neue Aufgabe eingeben …" maxlength="160" aria-label="Neue Aufgabe">
+    <select id="taskWhere" aria-label="Ziel">
+      <option value="today">HEUTE</option>
+      <option value="date">DATUM …</option>
+      <option value="board">PINNWAND</option>
+    </select>
+    <input type="date" id="taskDate" aria-label="Fälligkeitsdatum" style="display:none">
+    <select id="taskDifficulty" aria-label="Schwierigkeit">
+      <option value="easy">LEICHT · 10 XP</option>
+      <option value="medium" selected>MITTEL · 25 XP</option>
+      <option value="hard">SCHWER · 50 XP</option>
+    </select>
+    <button class="hud-btn primary" id="addBtn">Hinzufügen</button>
+  </div>
+
+  <!-- ═══ View-Navigation ═══ -->
+  <nav class="view-nav">
+    <button class="hud-btn" data-view="today">◈ HEUTE</button>
+    <button class="hud-btn" data-view="week">▤ WOCHE</button>
+    <button class="hud-btn" data-view="month">▦ MONAT</button>
+    <span class="spacer"></span>
+    <button class="hud-btn" id="planDayBtn">◷ TAG PLANEN</button>
+    <button class="hud-btn" id="prayerBtn" title="Gebetszeiten als feste Blöcke">☾ GEBETSZEITEN</button>
+    <button class="hud-btn" id="notifyBtn" title="Browser-Erinnerung 10 Min vor Zeitblöcken">◉ ERINNERUNGEN</button>
+  </nav>
+
+  <!-- ═══ VIEW: HEUTE ═══ -->
+  <section class="view" id="view-today">
+    <div class="today-layout">
+      <div class="today-col">
+        <div class="quest-panel">
+          <div class="q-title">⬡ DAILY QUESTS</div>
+          <div id="questList"></div>
+        </div>
+        <div class="timeline-wrap">
+          <div class="timeline" id="todayTimeline"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-head" style="margin-top:0">
+          <h2><span>◈</span> Heute im Fokus</h2>
+          <div class="rule"></div>
+          <div class="count" id="todayCount">0 AUFGABEN</div>
+        </div>
+        <div class="today-grid" id="todayGrid"></div>
+        <div class="empty" id="todayEmpty" hidden>
+          <span class="big">KEINE MISSION AKTIV</span>
+          Füge oben eine Aufgabe hinzu oder hole eine von der Pinnwand.
+        </div>
+
+        <div class="section-head">
+          <h2><span>◌</span> Pinnwand</h2>
+          <div class="rule"></div>
+          <div class="count" id="boardCount">0 NOTIZEN</div>
+        </div>
+        <div class="board">
+          <div class="board-grid" id="boardGrid"></div>
+          <div class="empty" id="boardEmpty" hidden>
+            <span class="big">PINNWAND LEER</span>
+            Alles, was noch kein Datum hat, landet hier.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ VIEW: WOCHE ═══ -->
+  <section class="view" id="view-week">
+    <div class="cal-head">
+      <button class="hud-btn small" id="weekPrev">◀</button>
+      <div class="cal-title" id="weekLabel"></div>
+      <button class="hud-btn small" id="weekNext">▶</button>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+    <div class="section-head">
+      <h2><span>◌</span> Pinnwand → auf Tage ziehen</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="planner-pool" id="weekPool"></div>
+  </section>
+
+  <!-- ═══ VIEW: MONAT ═══ -->
+  <section class="view" id="view-month">
+    <div class="cal-layout">
+      <div>
+        <div class="cal-head">
+          <button class="hud-btn small" id="calPrev">◀</button>
+          <div class="cal-title" id="calTitle"></div>
+          <button class="hud-btn small" id="calNext">▶</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <aside class="cal-side">
+        <h4 id="calSideTitle"></h4>
+        <div class="list" id="calSideList"></div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="storage-note">⬡ SPEICHER: LOKAL IN DEINEM BROWSER (localStorage) · SCHEMA V2</div>
+</div>
+
+<!-- ═══ Tagesplaner-Overlay ═══ -->
+<div class="overlay" id="plannerOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>◷ Tag planen</h3>
+      <button class="hud-btn small" id="plannerClose">SCHLIESSEN ✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="planner-grid">
+        <div>
+          <div class="q-title mono" style="color:var(--holo); font-size:11px; letter-spacing:3px; margin-bottom:10px">
+            OFFENE TASKS · HEUTE
+          </div>
+          <div class="planner-pool" id="plannerPool"></div>
+        </div>
+        <div class="timeline-wrap" style="max-height:64vh">
+          <div class="timeline" id="plannerTimeline"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Level-Up-Overlay + Toast ═══ -->
+<div class="levelup" id="levelup" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
