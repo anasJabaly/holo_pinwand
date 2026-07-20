@@ -82,3 +82,20 @@ h1 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Zugänglichkeit & Bewegungsreduktion ── */
+:focus-visible {
+  outline: 2px solid var(--holo);
+  outline-offset: 3px;
+}
+
+body.dialog-open { overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

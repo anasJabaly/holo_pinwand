@@ -129,7 +129,7 @@ function renderPrayerPanel() {
         <span class="mono">${p.time}</span>
       </div>`).join('')
       : '<div class="mono dim" style="font-size:11px">ZEITEN WERDEN GELADEN …</div>'}
-    <button class="hud-btn small" id="prayerManageBtn" style="margin-top:10px; width:100%">IN TAGESPLAN ÜBERNEHMEN …</button>`;
+    <button type="button" class="hud-btn small" id="prayerManageBtn" style="margin-top:10px; width:100%">IN TAGESPLAN ÜBERNEHMEN …</button>`;
 }
 
 /* ── Mini-Statistik ── */
@@ -185,7 +185,7 @@ function renderTimeline() {
       top: (toMinutes(b.start) - startMin) * ppm,
       height: b.durationMin * ppm,
       cls: 'prayer', time: b.start, badge: '☾', title: esc(b.title),
-      actions: `<button class="tlb-x" data-prayer-remove="${esc(b.title)}" title="Aus Plan entfernen">✕</button>`,
+      actions: `<button type="button" class="tlb-x" data-prayer-remove="${esc(b.title)}" title="Aus Plan entfernen">✕</button>`,
     });
   });
 
@@ -197,7 +197,7 @@ function renderTimeline() {
       height: ev.durationMin * ppm,
       cls: 'event', time: ev.start, badge: '', title: esc(ev.title),
       style: `border-left: 3px solid ${c}; --ev-c:${c};`,
-      actions: `<button class="tlb-x" data-event-id="${ev.id}" title="Bearbeiten">✎</button>`,
+      actions: `<button type="button" class="tlb-x" data-event-id="${ev.id}" title="Bearbeiten">✎</button>`,
     });
   });
 
@@ -216,7 +216,7 @@ function renderTimeline() {
       badge: conflicts.has(t.id) ? '⚠' : (running ? '▶' : ''),
       title: esc(t.title),
       style: g ? `border-left: 3px solid ${g.color};` : '',
-      actions: `<button class="tlb-x" data-open-task="${t.id}" title="Details">✎</button>`,
+      actions: `<button type="button" class="tlb-x" data-open-task="${t.id}" title="Details">✎</button>`,
     });
   });
 
@@ -251,7 +251,7 @@ function taskCard(t) {
       <div class="chip-row">${badges(t)}<span class="chip chip-xp">+${XP_BY_DIFFICULTY[t.difficulty]} XP</span></div>
       <div class="task-title">${esc(t.title)}</div>
       ${t.plan ? `<div class="task-time">◷ ${t.plan.start} · ${t.plan.durationMin} MIN</div>` : ''}
-      <button class="hud-btn ok card-check" data-act="toggle" data-id="${t.id}">
+      <button type="button" class="hud-btn ok card-check" data-act="toggle" data-id="${t.id}">
         ${t.status === 'done' ? '↩ ZURÜCK' : '✓ FERTIG'}
       </button>
     </div>`;
@@ -265,8 +265,8 @@ function renderToday() {
     <div class="over-row" data-task-id="${t.id}">
       <span class="chip chip-over">◔ ${relLabel(t.dueDate)}</span>
       <span class="over-title">${esc(t.title)}</span>
-      <button class="hud-btn small ok" data-act="toggle" data-id="${t.id}">✓</button>
-      <button class="hud-btn small" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
+      <button type="button" class="hud-btn small ok" data-act="toggle" data-id="${t.id}">✓</button>
+      <button type="button" class="hud-btn small" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
     </div>`).join('');
 
   const list = todayTasks().filter(matchesFilter);
@@ -280,7 +280,7 @@ function renderToday() {
       <span class="pin" ${findGroup(t.groupId) ? `style="background:${findGroup(t.groupId).color}; box-shadow:0 0 8px ${findGroup(t.groupId).color}"` : ''}></span>
       <div class="chip-row">${badges(t)}</div>
       <div class="task-title">${esc(t.title)}</div>
-      <button class="hud-btn small card-check" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
+      <button type="button" class="hud-btn small card-check" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
     </div>`).join('');
   el('boardEmpty').hidden = board.length > 0;
   el('boardCount').textContent = `${board.length} ${board.length === 1 ? 'NOTIZ' : 'NOTIZEN'}`;

@@ -13,6 +13,7 @@ import {
 import { prayerTimes } from './integrations.js';
 import { esc, minToHHMM, pxPerMin, tlBlock } from './ui.js';
 import { eventsForDate, EVENT_COLORS } from './events.js';
+import { closeDialog, openDialog } from './dialogs.js';
 
 let selectedTaskId = null;
 
@@ -20,12 +21,12 @@ const el = (id) => document.getElementById(id);
 
 export function openPlanner() {
   selectedTaskId = null;
-  el('plannerOverlay').hidden = false;
+  openDialog('plannerOverlay', { focus: '#plannerClose' });
   renderPlanner();
 }
 
 export function closePlanner() {
-  el('plannerOverlay').hidden = true;
+  closeDialog('plannerOverlay');
 }
 
 export function renderPlanner() {
@@ -72,7 +73,7 @@ export function renderPlanner() {
     html += tlBlock({
       top, height: b.durationMin * ppm,
       cls: 'prayer', time: b.start, badge: '☾', title: esc(b.title),
-      actions: `<button class="tlb-x" data-prayer-remove="${esc(b.title)}" title="Aus Plan entfernen">✕</button>`,
+      actions: `<button type="button" class="tlb-x" data-prayer-remove="${esc(b.title)}" title="Aus Plan entfernen">✕</button>`,
     });
   });
 
@@ -83,7 +84,7 @@ export function renderPlanner() {
       height: ev.durationMin * ppm,
       cls: 'event', time: ev.start, badge: '', title: esc(ev.title),
       style: `border-left:3px solid ${EVENT_COLORS[ev.color]};`,
-      actions: `<button class="tlb-x" data-event-id="${ev.id}" title="Bearbeiten">✎</button>`,
+      actions: `<button type="button" class="tlb-x" data-event-id="${ev.id}" title="Bearbeiten">✎</button>`,
     });
   });
 
@@ -98,9 +99,9 @@ export function renderPlanner() {
       badge: conflicts.has(t.id) ? '⚠' : '',
       title: esc(t.title),
       actions: `
-        <button class="tlb-x" data-plan-act="minus" data-id="${t.id}" title="30 Min kürzer">−</button>
-        <button class="tlb-x" data-plan-act="plus" data-id="${t.id}" title="30 Min länger">＋</button>
-        <button class="tlb-x" data-plan-act="remove" data-id="${t.id}" title="Aus Plan entfernen">✕</button>`,
+        <button type="button" class="tlb-x" data-plan-act="minus" data-id="${t.id}" title="30 Min kürzer">−</button>
+        <button type="button" class="tlb-x" data-plan-act="plus" data-id="${t.id}" title="30 Min länger">＋</button>
+        <button type="button" class="tlb-x" data-plan-act="remove" data-id="${t.id}" title="Aus Plan entfernen">✕</button>`,
     });
   });
 

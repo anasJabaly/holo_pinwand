@@ -12,9 +12,11 @@ import { openPlanner, renderPlanner, initPlannerEvents } from './dayplanner.js';
 import { prayerTimes, reminders } from './integrations.js';
 import { openDetail, renderDetail, initDetailEvents } from './taskdetail.js';
 import { allGroups, addGroup, deleteGroup, setGroupColor, parseGroupShortcut, GROUP_COLORS } from './groups.js';
-import { addEvent, editEvent, deleteEvent, findEvent, EVENT_COLORS } from './events.js';
+import { addEvent, editEvent, deleteEvent, findEvent } from './events.js';
 import { runBootSequence } from './startscreen.js';
 import { esc } from './ui.js';
+import { closeDialog, initDialogSystem, openDialog } from './dialogs.js';
+import { initDataManagement } from './data-management.js';
 
 const el = (id) => document.getElementById(id);
 
@@ -73,8 +75,7 @@ function openQuickAdd(time) {
   el('quickTitle').value = '';
   el('quickType').value = 'task';
   el('quickColorRow').hidden = true;
-  el('quickAddOverlay').hidden = false;
-  el('quickTitle').focus();
+  openDialog('quickAddOverlay', { focus: '#quickTitle' });
 }
 
 function submitQuickAdd() {
@@ -95,7 +96,7 @@ function submitQuickAdd() {
     planTask(t.id, quickTime, dur);
     toast(`EINGEPLANT: ${quickTime} UHR ✓`);
   }
-  el('quickAddOverlay').hidden = true;
+  closeDialog('quickAddOverlay');
 }
 
 /* ── Termin bearbeiten ── */
@@ -109,7 +110,7 @@ function openEventModal(id) {
   el('evStart').value = ev.start;
   el('evDur').value = String(ev.durationMin);
   el('evColor').value = ev.color;
-  el('eventOverlay').hidden = false;
+  openDialog('eventOverlay', { focus: '#evTitle' });
 }
 
 /* ── Gebetszeiten-Vorschau-Modal ── */
@@ -122,9 +123,10 @@ function renderPrayerModal() {
   if (!s.settings.prayerEnabled) {
     body.innerHTML = `
       <p class="dim" style="font-size:15px; margin-bottom:14px">
-        Standort wird einmalig für die Berechnung der Gebetszeiten benötigt (Aladhan-API, kostenlos).
+        Für die Berechnung werden gerundete Koordinaten lokal gespeichert und an die Aladhan-API übertragen.
+        Du kannst die Standortdaten jederzeit wieder vollständig löschen.
       </p>
-      <button class="hud-btn primary" id="prayerEnableBtn">STANDORT AKTIVIEREN</button>`;
+      <button type="button" class="hud-btn primary" id="prayerEnableBtn">STANDORT AKTIVIEREN</button>`;
     return;
   }
 
@@ -150,14 +152,15 @@ function renderPrayerModal() {
         <div class="prayer-modal-row ${adopted ? 'adopted' : ''}">
           <span class="p-name">${esc(p.name)}</span>
           <span class="mono p-time">${p.time}</span>
-          <button class="hud-btn small ${adopted ? 'active' : ''}" data-adopt="${esc(p.name)}">
+          <button type="button" class="hud-btn small ${adopted ? 'active' : ''}" data-adopt="${esc(p.name)}">
             ${adopted ? '✓ IM PLAN' : '→ IN PLAN'}
           </button>
         </div>`;
     }).join('')}
-    <button class="hud-btn primary" id="prayerAdoptAll" style="margin-top:14px; width:100%">ALLE ÜBERNEHMEN</button>
+    <button type="button" class="hud-btn primary" id="prayerAdoptAll" style="margin-top:14px; width:100%">ALLE ÜBERNEHMEN</button>
+    <button type="button" class="hud-btn danger" id="prayerClearLocation" style="margin-top:8px; width:100%">STANDORTDATEN LÖSCHEN</button>
     <p class="mono dim" style="font-size:10px; margin-top:10px; letter-spacing:1px">
-      NICHTS WIRD OHNE DEINE BESTÄTIGUNG IN DEN PLAN GESCHRIEBEN.
+      KOORDINATEN WERDEN AUF DREI NACHKOMMASTELLEN GERUNDET. NICHTS WIRD OHNE DEINE BESTÄTIGUNG IN DEN PLAN GESCHRIEBEN.
     </p>`;
 }
 
@@ -172,7 +175,7 @@ function renderGroupsModal() {
           <select class="form-input g-color" data-gcolor="${g.id}" aria-label="Farbe">
             ${GROUP_COLORS.map((c) => `<option value="${c}" ${c === g.color ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
-          <button class="hud-btn small danger" data-gdel="${g.id}">✕</button>
+          <button type="button" class="hud-btn small danger" data-gdel="${g.id}" aria-label="Gruppe ${esc(g.name)} löschen">✕</button>
         </div>`).join('')
     : '<div class="empty">NOCH KEINE GRUPPEN — z. B. "SWP", "Mathe 2", "Deen", "Privat"</div>';
 }
@@ -203,6 +206,8 @@ function initWeekDnD() {
 
 /* ── Boot ── */
 function boot() {
+  initDialogSystem();
+  initDataManagement();
   rolloverRecurring();
   validateStreak();
   ensureDailyQuests();
@@ -237,7 +242,7 @@ function boot() {
   el('view-today').addEventListener('click', (e) => {
     const slot = e.target.closest('.slot');
     if (slot) { openQuickAdd(slot.dataset.slot); return; }
-    if (e.target.id === 'prayerManageBtn') { el('prayerOverlay').hidden = false; renderPrayerModal(); }
+    if (e.target.id === 'prayerManageBtn') { openDialog('prayerOverlay'); renderPrayerModal(); }
   });
   document.addEventListener('holo:quickadd', (e) => openQuickAdd(e.detail.time));
   el('quickType').addEventListener('change', () => {
@@ -247,9 +252,9 @@ function boot() {
   });
   el('quickAddBtn').addEventListener('click', submitQuickAdd);
   el('quickTitle').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitQuickAdd(); });
-  el('quickCancel').addEventListener('click', () => { el('quickAddOverlay').hidden = true; });
+  el('quickCancel').addEventListener('click', () => closeDialog('quickAddOverlay'));
   el('quickAddOverlay').addEventListener('click', (e) => {
-    if (e.target === el('quickAddOverlay')) el('quickAddOverlay').hidden = true;
+    if (e.target === el('quickAddOverlay')) closeDialog('quickAddOverlay');
   });
 
   /* Termin-Modal */
@@ -258,26 +263,26 @@ function boot() {
       title: el('evTitle').value, start: el('evStart').value,
       durationMin: parseInt(el('evDur').value, 10), color: el('evColor').value,
     });
-    el('eventOverlay').hidden = true;
+    closeDialog('eventOverlay');
     toast('TERMIN GESPEICHERT ✓');
   });
   el('evDelete').addEventListener('click', () => {
     deleteEvent(editingEventId);
-    el('eventOverlay').hidden = true;
+    closeDialog('eventOverlay');
     toast('TERMIN GELÖSCHT');
   });
-  el('evCancel').addEventListener('click', () => { el('eventOverlay').hidden = true; });
+  el('evCancel').addEventListener('click', () => closeDialog('eventOverlay'));
   el('eventOverlay').addEventListener('click', (e) => {
-    if (e.target === el('eventOverlay')) el('eventOverlay').hidden = true;
+    if (e.target === el('eventOverlay')) closeDialog('eventOverlay');
   });
 
   /* Gebetszeiten: Button öffnet die VORSCHAU (kein Auto-Eintrag) */
   el('prayerBtn').addEventListener('click', () => {
-    el('prayerOverlay').hidden = false;
+    openDialog('prayerOverlay');
     renderPrayerModal();
   });
   el('prayerOverlay').addEventListener('click', async (e) => {
-    if (e.target === el('prayerOverlay')) { el('prayerOverlay').hidden = true; return; }
+    if (e.target === el('prayerOverlay')) { closeDialog('prayerOverlay'); return; }
     if (e.target.id === 'prayerEnableBtn') {
       e.target.textContent = 'STANDORT WIRD ERMITTELT …';
       const ok = await prayerTimes.enable();
@@ -286,6 +291,14 @@ function boot() {
       return;
     }
     if (e.target.id === 'prayerAdoptAll') { prayerTimes.adoptAll(todayISO()); renderPrayerModal(); return; }
+    if (e.target.id === 'prayerClearLocation') {
+      if (confirm('Gespeicherte Koordinaten, Cache und übernommene Gebetsblöcke löschen?')) {
+        prayerTimes.clearLocation();
+        toast('STANDORTDATEN GELÖSCHT');
+        renderPrayerModal();
+      }
+      return;
+    }
     const adoptBtn = e.target.closest('[data-adopt]');
     if (adoptBtn) {
       const name = adoptBtn.dataset.adopt;
@@ -293,13 +306,13 @@ function boot() {
       renderPrayerModal();
     }
   });
-  el('prayerClose').addEventListener('click', () => { el('prayerOverlay').hidden = true; });
+  el('prayerClose').addEventListener('click', () => closeDialog('prayerOverlay'));
 
   /* Gruppen-Verwaltung */
-  el('groupsBtn').addEventListener('click', () => { el('groupsOverlay').hidden = false; renderGroupsModal(); });
-  el('groupsClose').addEventListener('click', () => { el('groupsOverlay').hidden = true; });
+  el('groupsBtn').addEventListener('click', () => { openDialog('groupsOverlay', { focus: '#newGroupName' }); renderGroupsModal(); });
+  el('groupsClose').addEventListener('click', () => closeDialog('groupsOverlay'));
   el('groupsOverlay').addEventListener('click', (e) => {
-    if (e.target === el('groupsOverlay')) { el('groupsOverlay').hidden = true; return; }
+    if (e.target === el('groupsOverlay')) { closeDialog('groupsOverlay'); return; }
     const del = e.target.closest('[data-gdel]');
     if (del && confirm('Gruppe löschen? Zugehörige Aufgaben behalten "Keine Gruppe".')) {
       deleteGroup(del.dataset.gdel);
@@ -339,6 +352,14 @@ function boot() {
   setInterval(renderAll, 60 * 1000);
 
   switchView('today');
+}
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((error) => {
+      console.warn('Service Worker konnte nicht registriert werden:', error);
+    });
+  });
 }
 
 /* Boot-Sequenz zuerst, dann die App */

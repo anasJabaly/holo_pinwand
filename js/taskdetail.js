@@ -6,9 +6,9 @@
 
 import { findTask, editTask, setStatus, deleteTask, addSubtask, toggleSubtask, deleteSubtask } from './tasks.js';
 import { allGroups } from './groups.js';
-import { DIFFICULTY_LABEL } from './leveling.js';
 import { esc, toast, showLevelUp } from './ui.js';
 import { getState } from './state.js';
+import { closeDialog, openDialog } from './dialogs.js';
 
 const el = (id) => document.getElementById(id);
 let currentId = null;
@@ -16,13 +16,12 @@ let currentId = null;
 export function openDetail(id) {
   if (!findTask(id)) return;
   currentId = id;
+  openDialog('detailOverlay', { focus: '#dTitle' });
   renderDetail();
-  el('detailOverlay').hidden = false;
 }
 
 export function closeDetail() {
-  el('detailOverlay').hidden = true;
-  currentId = null;
+  closeDialog('detailOverlay');
 }
 
 export function renderDetail() {
@@ -36,7 +35,7 @@ export function renderDetail() {
   el('dStatus').innerHTML = [
     ['open', 'OFFEN'], ['progress', 'IN ARBEIT'], ['done', '✓ ERLEDIGT'],
   ].map(([v, label]) =>
-    `<button class="hud-btn small ${t.status === v ? 'active' : ''}" data-status="${v}">${label}</button>`
+    `<button type="button" class="hud-btn small ${t.status === v ? 'active' : ''}" data-status="${v}">${label}</button>`
   ).join('');
 
   el('dPriority').value = t.priority;
@@ -63,9 +62,9 @@ export function renderDetail() {
   el('dSubProgress').textContent = t.subtasks.length ? `${done}/${t.subtasks.length}` : '';
   el('dSubs').innerHTML = t.subtasks.map((s) => `
     <div class="subtask ${s.done ? 'done' : ''}">
-      <button class="sub-check" data-sub-toggle="${s.id}" aria-label="Unterpunkt umschalten">${s.done ? '✓' : ''}</button>
+      <button type="button" class="sub-check" data-sub-toggle="${s.id}" aria-label="Unterpunkt umschalten">${s.done ? '✓' : ''}</button>
       <span class="sub-title">${esc(s.title)}</span>
-      <button class="hud-btn small danger" data-sub-del="${s.id}">✕</button>
+      <button type="button" class="hud-btn small danger" data-sub-del="${s.id}" aria-label="Unterpunkt löschen">✕</button>
     </div>`).join('');
 
   const fmt = (ts) => ts ? new Date(ts).toLocaleDateString('de-DE') : '—';
@@ -89,6 +88,9 @@ function saveFields() {
 
 export function initDetailEvents() {
   const overlay = el('detailOverlay');
+
+  overlay.addEventListener('holo:dialog-before-close', saveFields);
+  overlay.addEventListener('holo:dialog-closed', () => { currentId = null; });
 
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) { saveFields(); closeDetail(); return; }
@@ -130,7 +132,4 @@ export function initDetailEvents() {
     }
   });
   el('dClose').addEventListener('click', () => { saveFields(); closeDetail(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !el('detailOverlay').hidden) { saveFields(); closeDetail(); }
-  });
 }

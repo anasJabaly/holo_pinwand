@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#08111d">
+<meta name="description" content="Lokale, gamifizierte Aufgaben-Pinnwand mit Tagesplaner, Kalender und Offline-Unterstützung.">
 <title>Holo-Pinnwand</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
@@ -68,21 +73,22 @@
       <option value="medium" selected>MITTEL · 25 XP</option>
       <option value="hard">SCHWER · 50 XP</option>
     </select>
-    <button class="hud-btn primary" id="addBtn">Hinzufügen</button>
+    <button type="button" class="hud-btn primary" id="addBtn">Hinzufügen</button>
   </div>
 
   <!-- ═══ Navigation ═══ -->
   <nav class="view-nav">
-    <button class="hud-btn" data-view="today">◈ HEUTE</button>
-    <button class="hud-btn" data-view="week">▤ WOCHE</button>
-    <button class="hud-btn" data-view="month">▦ MONAT</button>
+    <button type="button" class="hud-btn" data-view="today">◈ HEUTE</button>
+    <button type="button" class="hud-btn" data-view="week">▤ WOCHE</button>
+    <button type="button" class="hud-btn" data-view="month">▦ MONAT</button>
     <select class="hud-btn" id="groupFilter" aria-label="Nach Gruppe filtern"></select>
     <input type="text" class="search-input" id="searchInput" placeholder="⌕ SUCHEN …" aria-label="Aufgaben durchsuchen">
     <span class="spacer"></span>
-    <button class="hud-btn" id="planDayBtn">◷ TAG PLANEN</button>
-    <button class="hud-btn" id="groupsBtn">⬡ GRUPPEN</button>
-    <button class="hud-btn" id="prayerBtn" title="Gebetszeiten-Vorschau">☾</button>
-    <button class="hud-btn" id="notifyBtn" title="Erinnerung 10 Min vor Zeitblöcken">◉</button>
+    <button type="button" class="hud-btn" id="planDayBtn">◷ TAG PLANEN</button>
+    <button type="button" class="hud-btn" id="groupsBtn">⬡ GRUPPEN</button>
+    <button type="button" class="hud-btn" id="dataBtn" title="Daten sichern und wiederherstellen" aria-label="Daten sichern und wiederherstellen">⇩</button>
+    <button type="button" class="hud-btn" id="prayerBtn" title="Gebetszeiten-Vorschau" aria-label="Gebetszeiten öffnen">☾</button>
+    <button type="button" class="hud-btn" id="notifyBtn" title="Erinnerung 10 Min vor Zeitblöcken" aria-label="Erinnerungen aktivieren">◉</button>
   </nav>
 
   <!-- ═══ VIEW: HEUTE ═══ -->
@@ -139,9 +145,9 @@
   <!-- ═══ VIEW: WOCHE ═══ -->
   <section class="view" id="view-week">
     <div class="cal-head">
-      <button class="hud-btn small" id="weekPrev">◀</button>
+      <button type="button" class="hud-btn small" id="weekPrev" aria-label="Vorherige Woche">◀</button>
       <div class="cal-title" id="weekLabel"></div>
-      <button class="hud-btn small" id="weekNext">▶</button>
+      <button type="button" class="hud-btn small" id="weekNext" aria-label="Nächste Woche">▶</button>
     </div>
     <div class="week-grid" id="weekGrid"></div>
     <div class="section-head">
@@ -156,9 +162,9 @@
     <div class="cal-layout">
       <div>
         <div class="cal-head">
-          <button class="hud-btn small" id="calPrev">◀</button>
+          <button type="button" class="hud-btn small" id="calPrev" aria-label="Vorheriger Monat">◀</button>
           <div class="cal-title" id="calTitle"></div>
-          <button class="hud-btn small" id="calNext">▶</button>
+          <button type="button" class="hud-btn small" id="calNext" aria-label="Nächster Monat">▶</button>
         </div>
         <div class="cal-grid" id="calGrid"></div>
       </div>
@@ -169,15 +175,15 @@
     </div>
   </section>
 
-  <div class="storage-note">⬡ SPEICHER: LOKAL IN DEINEM BROWSER · SCHEMA V3</div>
+  <div class="storage-note">⬡ SPEICHER: LOKAL IN DEINEM BROWSER · AUTO-RÜCKFALLKOPIE · SCHEMA V4</div>
 </div>
 
 <!-- ═══ Tagesplaner ═══ -->
-<div class="overlay" id="plannerOverlay" hidden>
+<div class="overlay" id="plannerOverlay" role="dialog" aria-modal="true" aria-labelledby="plannerTitle" tabindex="-1" hidden>
   <div class="modal">
     <div class="modal-head">
-      <h3>◷ Tag planen</h3>
-      <button class="hud-btn small" id="plannerClose">SCHLIESSEN ✕</button>
+      <h3 id="plannerTitle">◷ Tag planen</h3>
+      <button type="button" class="hud-btn small" id="plannerClose" aria-label="Tagesplaner schließen">SCHLIESSEN ✕</button>
     </div>
     <div class="modal-body">
       <div class="planner-grid">
@@ -196,10 +202,10 @@
 </div>
 
 <!-- ═══ Quick-Add (Klick auf Zeitslot) ═══ -->
-<div class="overlay" id="quickAddOverlay" hidden>
+<div class="overlay" id="quickAddOverlay" role="dialog" aria-modal="true" aria-labelledby="quickAddTitle" tabindex="-1" hidden>
   <div class="modal" style="width:min(440px,100%)">
     <div class="modal-head">
-      <h3>＋ Neuer Eintrag</h3>
+      <h3 id="quickAddTitle">＋ Neuer Eintrag</h3>
       <span class="mono dim" id="quickTimeLabel" style="font-size:11px; letter-spacing:2px"></span>
     </div>
     <div class="modal-body">
@@ -244,17 +250,17 @@
         </select>
       </div>
       <div class="card-actions" style="margin-top:6px">
-        <button class="hud-btn primary" id="quickAddBtn">EINPLANEN</button>
-        <button class="hud-btn" id="quickCancel">ABBRECHEN</button>
+        <button type="button" class="hud-btn primary" id="quickAddBtn">EINPLANEN</button>
+        <button type="button" class="hud-btn" id="quickCancel">ABBRECHEN</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ═══ Termin bearbeiten ═══ -->
-<div class="overlay" id="eventOverlay" hidden>
+<div class="overlay" id="eventOverlay" role="dialog" aria-modal="true" aria-labelledby="eventTitle" tabindex="-1" hidden>
   <div class="modal" style="width:min(420px,100%)">
-    <div class="modal-head"><h3>✎ Termin</h3><button class="hud-btn small" id="evCancel">✕</button></div>
+    <div class="modal-head"><h3 id="eventTitle">✎ Termin</h3><button type="button" class="hud-btn small" id="evCancel" aria-label="Dialog schließen">✕</button></div>
     <div class="modal-body">
       <div class="form-row"><label for="evTitle">TITEL</label>
         <input type="text" class="form-input" id="evTitle" maxlength="120"></div>
@@ -275,35 +281,35 @@
           </select></div>
       </div>
       <div class="card-actions">
-        <button class="hud-btn primary" id="evSave">SPEICHERN</button>
-        <button class="hud-btn danger" id="evDelete">LÖSCHEN</button>
+        <button type="button" class="hud-btn primary" id="evSave">SPEICHERN</button>
+        <button type="button" class="hud-btn danger" id="evDelete">LÖSCHEN</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ═══ Gebetszeiten-Vorschau ═══ -->
-<div class="overlay" id="prayerOverlay" hidden>
+<div class="overlay" id="prayerOverlay" role="dialog" aria-modal="true" aria-labelledby="prayerTitle" tabindex="-1" hidden>
   <div class="modal" style="width:min(420px,100%)">
     <div class="modal-head">
-      <h3 style="color:var(--prayer)">☾ Gebetszeiten heute</h3>
-      <button class="hud-btn small" id="prayerClose">✕</button>
+      <h3 id="prayerTitle" style="color:var(--prayer)">☾ Gebetszeiten heute</h3>
+      <button type="button" class="hud-btn small" id="prayerClose" aria-label="Dialog schließen">✕</button>
     </div>
     <div class="modal-body" id="prayerModalBody"></div>
   </div>
 </div>
 
 <!-- ═══ Gruppen-Verwaltung ═══ -->
-<div class="overlay" id="groupsOverlay" hidden>
+<div class="overlay" id="groupsOverlay" role="dialog" aria-modal="true" aria-labelledby="groupsTitle" tabindex="-1" hidden>
   <div class="modal" style="width:min(480px,100%)">
-    <div class="modal-head"><h3>⬡ Gruppen</h3><button class="hud-btn small" id="groupsClose">✕</button></div>
+    <div class="modal-head"><h3 id="groupsTitle">⬡ Gruppen</h3><button type="button" class="hud-btn small" id="groupsClose" aria-label="Dialog schließen">✕</button></div>
     <div class="modal-body">
       <div class="form-row-inline" style="align-items:flex-end">
         <div class="form-row" style="margin-bottom:0">
           <label for="newGroupName">NEUE GRUPPE</label>
           <input type="text" class="form-input" id="newGroupName" maxlength="40" placeholder="z. B. SWP, Mathe 2, Deen …">
         </div>
-        <button class="hud-btn primary" id="newGroupBtn" style="height:40px">ANLEGEN</button>
+        <button type="button" class="hud-btn primary" id="newGroupBtn" style="height:40px">ANLEGEN</button>
       </div>
       <div style="margin-top:16px" id="groupsBody"></div>
       <p class="mono dim" style="font-size:10px; margin-top:12px; letter-spacing:1px">
@@ -313,12 +319,38 @@
   </div>
 </div>
 
+<!-- ═══ Daten sichern und wiederherstellen ═══ -->
+<div class="overlay" id="dataOverlay" role="dialog" aria-modal="true" aria-labelledby="dataTitle" tabindex="-1" hidden>
+  <div class="modal" style="width:min(560px,100%)">
+    <div class="modal-head">
+      <h3 id="dataTitle">⇩ Daten &amp; Backup</h3>
+      <button type="button" class="hud-btn small" id="dataClose" aria-label="Dialog schließen">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="dim" style="font-size:15px; margin-bottom:8px">
+        Deine Daten bleiben lokal im Browser. Vor jedem neuen Speicherstand wird die vorherige Version automatisch als Rückfallkopie abgelegt.
+      </p>
+      <p class="mono dim" id="dataSummary" style="font-size:11px; letter-spacing:1px; margin-bottom:18px"></p>
+      <div class="data-actions">
+        <button type="button" class="hud-btn primary" id="dataExportBtn">JSON-BACKUP EXPORTIEREN</button>
+        <button type="button" class="hud-btn" id="dataImportBtn">JSON-BACKUP IMPORTIEREN</button>
+        <input type="file" id="dataImportInput" accept="application/json,.json" hidden>
+        <button type="button" class="hud-btn" id="dataRestoreBtn">LETZTE RÜCKFALLKOPIE WIEDERHERSTELLEN</button>
+        <button type="button" class="hud-btn danger" id="dataResetBtn">ALLE APP-DATEN ZURÜCKSETZEN</button>
+      </div>
+      <p class="mono dim" style="font-size:10px; margin-top:14px; letter-spacing:1px">
+        EMPFEHLUNG: REGELMÄSSIG EIN JSON-BACKUP EXPORTIEREN, BESONDERS VOR BROWSER- ODER GERÄTEWECHSELN.
+      </p>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ Task-Detailansicht ═══ -->
-<div class="overlay" id="detailOverlay" hidden>
+<div class="overlay" id="detailOverlay" role="dialog" aria-modal="true" aria-label="Aufgabe bearbeiten" tabindex="-1" hidden>
   <div class="modal" style="width:min(560px,100%)">
     <div class="modal-head">
       <input type="text" class="detail-title" id="dTitle" maxlength="160" aria-label="Titel">
-      <button class="hud-btn small" id="dClose">✕</button>
+      <button type="button" class="hud-btn small" id="dClose" aria-label="Dialog schließen">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-row"><label>STATUS</label><div class="status-row" id="dStatus"></div></div>
@@ -361,19 +393,19 @@
         <div id="dSubs"></div>
         <div class="form-row-inline" style="margin-top:6px">
           <input type="text" class="form-input" id="dSubInput" maxlength="120" placeholder="＋ Unterpunkt hinzufügen …">
-          <button class="hud-btn" id="dSubAdd" style="height:40px">＋</button>
+          <button type="button" class="hud-btn" id="dSubAdd" style="height:40px">＋</button>
         </div>
       </div>
       <div class="detail-foot">
         <span class="mono dim" id="dMeta" style="font-size:10px; letter-spacing:1px"></span>
-        <button class="hud-btn small danger" id="dDelete">AUFGABE LÖSCHEN</button>
+        <button type="button" class="hud-btn small danger" id="dDelete">AUFGABE LÖSCHEN</button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="levelup" id="levelup" hidden></div>
-<div class="toast" id="toast" hidden></div>
+<div class="levelup" id="levelup" role="status" aria-live="polite" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script type="module" src="js/app.js"></script>
 </body>
