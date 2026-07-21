@@ -81,6 +81,7 @@ export function rolloverRecurring() {
       } else {
         while (t.dueDate < today) t.dueDate = addDaysISO(t.dueDate, 7);
       }
+      t.status = 'open';
       t.done = false;
       t.doneAt = null;
     });
@@ -170,7 +171,12 @@ export function setDueDate(id, dueDate) {
     const t = s.tasks.find((x) => x.id === id);
     if (!t) return;
     t.dueDate = dueDate;
-    if (!dueDate) { t.plan = null; t.done = false; } // Pinnwand-Tasks sind offen & ungeplant
+    if (!dueDate) {                              // Pinnwand-Tasks sind offen & ungeplant
+      t.plan = null;
+      t.status = 'open';
+      t.done = false;
+      t.doneAt = null;
+    }
   });
   refreshQuestProgress();
 }
