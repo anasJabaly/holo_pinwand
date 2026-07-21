@@ -659,13 +659,15 @@ select.hud-btn { appearance: none; -webkit-appearance: none; }
   display: grid; place-items: center; cursor: pointer;
   animation: amb-in 0.4s ease;
 }
+.ambient[hidden] { display: none !important; }
 @keyframes amb-in { from { opacity: 0; } to { opacity: 1; } }
 .amb-inner { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px; }
 .amb-clock {
-  font-family: var(--font-mono); font-weight: 400;
+  font-family: var(--font-mono), 'Courier New', monospace; font-weight: 400;
   font-size: clamp(64px, 15vw, 200px); line-height: 1;
   color: var(--holo); letter-spacing: 4px;
   text-shadow: 0 0 40px var(--holo-dim);
+  font-variant-numeric: tabular-nums;
 }
 .amb-date {
   font-family: var(--font-mono); font-size: clamp(12px, 2vw, 18px);
@@ -688,3 +690,8 @@ select.hud-btn { appearance: none; -webkit-appearance: none; }
   .view-nav { gap: 6px; }
   .search-input { min-width: 110px; flex: 1; }
 }
+
+/* ═══ Fix: [hidden] muss display-Regeln immer schlagen ═══ */
+.more-menu[hidden],
+.form-row[hidden],
+.stats-row[hidden] { display: none !important; }
