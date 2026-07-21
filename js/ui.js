@@ -4,7 +4,7 @@
    nur der Status-Haken liegt direkt auf der Karte.
    ═══════════════════════════════════════════════════════ */
 
-import { getState, todayISO } from './state.js';
+import { getState, update, todayISO } from './state.js';
 import {
   todayTasks, boardTasks, tasksForDate, conflictIds, toMinutes, overdueTasks,
 } from './tasks.js';
@@ -15,6 +15,15 @@ import { allGroups, findGroup } from './groups.js';
 import { eventsForDate, EVENT_COLORS } from './events.js';
 
 const el = (id) => document.getElementById(id);
+
+/** Panel ein-/ausklappen (Zustand wird gespeichert) */
+export function togglePanel(key) {
+  const s = getState();
+  const cur = s.settings.collapsed || {};
+  update((st) => { st.settings.collapsed = { ...cur, [key]: !cur[key] }; });
+}
+
+const isCollapsed = (key) => Boolean((getState().settings.collapsed || {})[key]);
 
 /* ── Helfer ── */
 export const esc = (s) =>
@@ -121,15 +130,15 @@ function renderPrayerPanel() {
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const nextIdx = list.findIndex((p) => toMinutes(p.time) > nowMin);
 
-  panel.innerHTML = `
-    <div class="q-title" style="color:var(--prayer)">☾ GEBETSZEITEN</div>
+  el('prayerPanelBody').innerHTML = `
+    ${s.settings.locationLabel ? `<div class="mono dim" style="font-size:10px; letter-spacing:1px; margin-bottom:8px">◉ ${esc(s.settings.locationLabel.toUpperCase())}</div>` : ''}
     ${list.length ? list.map((p, i) => `
       <div class="prayer-row ${i === nextIdx ? 'next' : ''} ${toMinutes(p.time) <= nowMin ? 'past' : ''}">
         <span>${esc(p.name)} ${prayerTimes.isAdopted(iso, p.name) ? '<span class="mono" style="font-size:9px">· IM PLAN</span>' : ''}</span>
         <span class="mono">${p.time}</span>
       </div>`).join('')
       : '<div class="mono dim" style="font-size:11px">ZEITEN WERDEN GELADEN …</div>'}
-    <button type="button" class="hud-btn small" id="prayerManageBtn" style="margin-top:10px; width:100%">IN TAGESPLAN ÜBERNEHMEN …</button>`;
+    <button class="hud-btn small" id="prayerManageBtn" style="margin-top:10px; width:100%">EINSTELLEN & IN PLAN ÜBERNEHMEN …</button>`;
 }
 
 /* ── Mini-Statistik ── */
@@ -185,7 +194,7 @@ function renderTimeline() {
       top: (toMinutes(b.start) - startMin) * ppm,
       height: b.durationMin * ppm,
       cls: 'prayer', time: b.start, badge: '☾', title: esc(b.title),
-      actions: `<button type="button" class="tlb-x" data-prayer-remove="${esc(b.title)}" title="Aus Plan entfernen">✕</button>`,
+      actions: `<button class="tlb-x" data-prayer-remove="${esc(b.title)}" title="Aus Plan entfernen">✕</button>`,
     });
   });
 
@@ -197,7 +206,7 @@ function renderTimeline() {
       height: ev.durationMin * ppm,
       cls: 'event', time: ev.start, badge: '', title: esc(ev.title),
       style: `border-left: 3px solid ${c}; --ev-c:${c};`,
-      actions: `<button type="button" class="tlb-x" data-event-id="${ev.id}" title="Bearbeiten">✎</button>`,
+      actions: `<button class="tlb-x" data-event-id="${ev.id}" title="Bearbeiten">✎</button>`,
     });
   });
 
@@ -216,7 +225,7 @@ function renderTimeline() {
       badge: conflicts.has(t.id) ? '⚠' : (running ? '▶' : ''),
       title: esc(t.title),
       style: g ? `border-left: 3px solid ${g.color};` : '',
-      actions: `<button type="button" class="tlb-x" data-open-task="${t.id}" title="Details">✎</button>`,
+      actions: `<button class="tlb-x" data-open-task="${t.id}" title="Details">✎</button>`,
     });
   });
 
@@ -251,7 +260,7 @@ function taskCard(t) {
       <div class="chip-row">${badges(t)}<span class="chip chip-xp">+${XP_BY_DIFFICULTY[t.difficulty]} XP</span></div>
       <div class="task-title">${esc(t.title)}</div>
       ${t.plan ? `<div class="task-time">◷ ${t.plan.start} · ${t.plan.durationMin} MIN</div>` : ''}
-      <button type="button" class="hud-btn ok card-check" data-act="toggle" data-id="${t.id}">
+      <button class="hud-btn ok card-check" data-act="toggle" data-id="${t.id}">
         ${t.status === 'done' ? '↩ ZURÜCK' : '✓ FERTIG'}
       </button>
     </div>`;
@@ -265,8 +274,8 @@ function renderToday() {
     <div class="over-row" data-task-id="${t.id}">
       <span class="chip chip-over">◔ ${relLabel(t.dueDate)}</span>
       <span class="over-title">${esc(t.title)}</span>
-      <button type="button" class="hud-btn small ok" data-act="toggle" data-id="${t.id}">✓</button>
-      <button type="button" class="hud-btn small" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
+      <button class="hud-btn small ok" data-act="toggle" data-id="${t.id}">✓</button>
+      <button class="hud-btn small" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
     </div>`).join('');
 
   const list = todayTasks().filter(matchesFilter);
@@ -280,7 +289,7 @@ function renderToday() {
       <span class="pin" ${findGroup(t.groupId) ? `style="background:${findGroup(t.groupId).color}; box-shadow:0 0 8px ${findGroup(t.groupId).color}"` : ''}></span>
       <div class="chip-row">${badges(t)}</div>
       <div class="task-title">${esc(t.title)}</div>
-      <button type="button" class="hud-btn small card-check" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
+      <button class="hud-btn small card-check" data-act="toToday" data-id="${t.id}">→ HEUTE</button>
     </div>`).join('');
   el('boardEmpty').hidden = board.length > 0;
   el('boardCount').textContent = `${board.length} ${board.length === 1 ? 'NOTIZ' : 'NOTIZEN'}`;
@@ -379,12 +388,19 @@ export function toast(msg) {
 }
 
 /* ── Gesamt-Render ── */
+function applyCollapsed() {
+  document.querySelectorAll('.panel[data-panel]').forEach((p) => {
+    p.classList.toggle('collapsed', isCollapsed(p.dataset.panel));
+  });
+}
+
 export function renderAll() {
   renderPlayer();
   renderQuests();
   renderGroupFilter();
   if (viewState.active === 'today') {
     renderToday(); renderTimeline(); renderPrayerPanel(); renderStats();
+    applyCollapsed();
   }
   if (viewState.active === 'week')  renderWeek();
   if (viewState.active === 'month') renderMonth();

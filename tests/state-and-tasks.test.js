@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
 
 class MemoryStorage {
   #values = new Map();
@@ -9,6 +10,7 @@ class MemoryStorage {
   clear() { this.#values.clear(); }
 }
 
+globalThis.crypto ??= webcrypto;
 globalThis.localStorage = new MemoryStorage();
 
 const stateModule = await import('../js/state.js');
@@ -24,7 +26,7 @@ const { rolloverRecurring, setDueDate } = taskModule;
 
 function baseTask(overrides = {}) {
   return {
-    id: crypto.randomUUID(),
+    id: globalThis.crypto.randomUUID(),
     title: 'Testaufgabe',
     difficulty: 'medium',
     priority: 'normal',

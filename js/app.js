@@ -7,16 +7,15 @@ import {
   addTask, toggleDone, setDueDate, deleteTask, planTask, rolloverRecurring,
 } from './tasks.js';
 import { ensureDailyQuests, validateStreak, refreshQuestProgress } from './leveling.js';
-import { renderAll, tickClock, switchView, viewState, showLevelUp, toast } from './ui.js';
+import { renderAll, tickClock, switchView, viewState, showLevelUp, toast, togglePanel } from './ui.js';
 import { openPlanner, renderPlanner, initPlannerEvents } from './dayplanner.js';
-import { prayerTimes, reminders } from './integrations.js';
+import { prayerTimes, reminders, PRAYER_METHODS } from './integrations.js';
 import { openDetail, renderDetail, initDetailEvents } from './taskdetail.js';
 import { allGroups, addGroup, deleteGroup, setGroupColor, parseGroupShortcut, GROUP_COLORS } from './groups.js';
-import { addEvent, editEvent, deleteEvent, findEvent } from './events.js';
+import { addEvent, editEvent, deleteEvent, findEvent, EVENT_COLORS } from './events.js';
 import { runBootSequence } from './startscreen.js';
+import { initAmbient, isAmbientAutostart } from './ambient.js';
 import { esc } from './ui.js';
-import { closeDialog, initDialogSystem, openDialog } from './dialogs.js';
-import { initDataManagement } from './data-management.js';
 
 const el = (id) => document.getElementById(id);
 
@@ -75,7 +74,8 @@ function openQuickAdd(time) {
   el('quickTitle').value = '';
   el('quickType').value = 'task';
   el('quickColorRow').hidden = true;
-  openDialog('quickAddOverlay', { focus: '#quickTitle' });
+  el('quickAddOverlay').hidden = false;
+  el('quickTitle').focus();
 }
 
 function submitQuickAdd() {
@@ -96,7 +96,7 @@ function submitQuickAdd() {
     planTask(t.id, quickTime, dur);
     toast(`EINGEPLANT: ${quickTime} UHR ✓`);
   }
-  closeDialog('quickAddOverlay');
+  el('quickAddOverlay').hidden = true;
 }
 
 /* ── Termin bearbeiten ── */
@@ -110,7 +110,7 @@ function openEventModal(id) {
   el('evStart').value = ev.start;
   el('evDur').value = String(ev.durationMin);
   el('evColor').value = ev.color;
-  openDialog('eventOverlay', { focus: '#evTitle' });
+  el('eventOverlay').hidden = false;
 }
 
 /* ── Gebetszeiten-Vorschau-Modal ── */
@@ -120,31 +120,53 @@ function renderPrayerModal() {
   const iso = todayISO();
   const body = el('prayerModalBody');
 
-  if (!s.settings.prayerEnabled) {
+  // Standort-/Methoden-Einstellungen (immer sichtbar)
+  const methodOpts = PRAYER_METHODS.map((m) =>
+    `<option value="${m.id}" ${(s.settings.prayerMethod ?? 13) === m.id ? 'selected' : ''}>${esc(m.name)}</option>`
+  ).join('');
+
+  const settingsBlock = `
+    <div class="prayer-settings">
+      <div class="form-row">
+        <label for="prayerCity">STADT / MOSCHEE-ORT</label>
+        <div class="form-row-inline" style="gap:8px">
+          <input type="text" class="form-input" id="prayerCity" placeholder="z. B. Solingen"
+                 value="${esc(s.settings.locationLabel || '')}">
+          <button class="hud-btn" id="prayerCityBtn" style="height:40px; white-space:nowrap">SUCHEN</button>
+        </div>
+        <div id="prayerCityResults"></div>
+      </div>
+      <div class="form-row">
+        <label for="prayerMethodSel">BERECHNUNGSMETHODE</label>
+        <select class="form-input" id="prayerMethodSel">${methodOpts}</select>
+      </div>
+      <div class="form-row">
+        <button class="hud-btn small" id="prayerGpsBtn">◉ STATTDESSEN GPS VERWENDEN</button>
+      </div>
+    </div>`;
+
+  if (!s.settings.prayerEnabled || !s.settings.coords) {
     body.innerHTML = `
-      <p class="dim" style="font-size:15px; margin-bottom:14px">
-        Für die Berechnung werden gerundete Koordinaten lokal gespeichert und an die Aladhan-API übertragen.
-        Du kannst die Standortdaten jederzeit wieder vollständig löschen.
+      <p class="dim" style="font-size:14px; margin-bottom:14px">
+        Wähle deine Stadt für präzise Gebetszeiten (Aladhan-API, kostenlos). Die Methode bestimmt die genaue Berechnung — für Deutschland ist Diyanet meist am nächsten an den Moschee-Zeiten.
       </p>
-      <button type="button" class="hud-btn primary" id="prayerEnableBtn">STANDORT AKTIVIEREN</button>`;
+      ${settingsBlock}`;
     return;
   }
 
   const list = prayerTimes.listFor(iso);
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const next = list.find((p) => {
-    const [h, m] = p.time.split(':').map(Number);
-    return h * 60 + m > nowMin;
-  });
+  const next = list.find((p) => toMinutes(p.time) > nowMin);
   let countdown = '';
   if (next) {
-    const [h, m] = next.time.split(':').map(Number);
-    const diff = h * 60 + m - nowMin;
+    const diff = toMinutes(next.time) - nowMin;
     countdown = `NÄCHSTES: ${next.name.toUpperCase()} IN ${Math.floor(diff / 60)}H ${diff % 60}M`;
   }
 
   body.innerHTML = `
+    ${settingsBlock}
+    <div class="prayer-divider"></div>
     ${countdown ? `<div class="prayer-countdown mono">${countdown}</div>` : ''}
     ${list.map((p) => {
       const adopted = prayerTimes.isAdopted(iso, p.name);
@@ -152,17 +174,18 @@ function renderPrayerModal() {
         <div class="prayer-modal-row ${adopted ? 'adopted' : ''}">
           <span class="p-name">${esc(p.name)}</span>
           <span class="mono p-time">${p.time}</span>
-          <button type="button" class="hud-btn small ${adopted ? 'active' : ''}" data-adopt="${esc(p.name)}">
+          <button class="hud-btn small ${adopted ? 'active' : ''}" data-adopt="${esc(p.name)}">
             ${adopted ? '✓ IM PLAN' : '→ IN PLAN'}
           </button>
         </div>`;
     }).join('')}
-    <button type="button" class="hud-btn primary" id="prayerAdoptAll" style="margin-top:14px; width:100%">ALLE ÜBERNEHMEN</button>
-    <button type="button" class="hud-btn danger" id="prayerClearLocation" style="margin-top:8px; width:100%">STANDORTDATEN LÖSCHEN</button>
+    <button class="hud-btn primary" id="prayerAdoptAll" style="margin-top:14px; width:100%">ALLE ÜBERNEHMEN</button>
     <p class="mono dim" style="font-size:10px; margin-top:10px; letter-spacing:1px">
-      KOORDINATEN WERDEN AUF DREI NACHKOMMASTELLEN GERUNDET. NICHTS WIRD OHNE DEINE BESTÄTIGUNG IN DEN PLAN GESCHRIEBEN.
+      NICHTS WIRD OHNE DEINE BESTÄTIGUNG IN DEN PLAN GESCHRIEBEN.
     </p>`;
 }
+
+function toMinutes(hhmm) { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }
 
 /* ── Gruppen-Verwaltung ── */
 function renderGroupsModal() {
@@ -175,7 +198,7 @@ function renderGroupsModal() {
           <select class="form-input g-color" data-gcolor="${g.id}" aria-label="Farbe">
             ${GROUP_COLORS.map((c) => `<option value="${c}" ${c === g.color ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
-          <button type="button" class="hud-btn small danger" data-gdel="${g.id}" aria-label="Gruppe ${esc(g.name)} löschen">✕</button>
+          <button class="hud-btn small danger" data-gdel="${g.id}">✕</button>
         </div>`).join('')
     : '<div class="empty">NOCH KEINE GRUPPEN — z. B. "SWP", "Mathe 2", "Deen", "Privat"</div>';
 }
@@ -206,8 +229,6 @@ function initWeekDnD() {
 
 /* ── Boot ── */
 function boot() {
-  initDialogSystem();
-  initDataManagement();
   rolloverRecurring();
   validateStreak();
   ensureDailyQuests();
@@ -237,12 +258,27 @@ function boot() {
   el('planDayBtn').addEventListener('click', openPlanner);
   initPlannerEvents();
   initDetailEvents();
+  initAmbient();
+
+  // Panels ein-/ausklappen
+  el('view-today').addEventListener('click', (e) => {
+    const head = e.target.closest('[data-toggle]');
+    if (head) { togglePanel(head.dataset.toggle); renderAll(); }
+  });
+
+  // "⋯ MEHR"-Menü öffnen/schließen
+  el('moreBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    el('moreMenu').hidden = !el('moreMenu').hidden;
+  });
+  document.addEventListener('click', () => { el('moreMenu').hidden = true; });
+  el('moreMenu').addEventListener('click', (e) => e.stopPropagation());
 
   /* Quick-Add */
   el('view-today').addEventListener('click', (e) => {
     const slot = e.target.closest('.slot');
     if (slot) { openQuickAdd(slot.dataset.slot); return; }
-    if (e.target.id === 'prayerManageBtn') { openDialog('prayerOverlay'); renderPrayerModal(); }
+    if (e.target.id === 'prayerManageBtn') { el('prayerOverlay').hidden = false; renderPrayerModal(); }
   });
   document.addEventListener('holo:quickadd', (e) => openQuickAdd(e.detail.time));
   el('quickType').addEventListener('change', () => {
@@ -252,9 +288,9 @@ function boot() {
   });
   el('quickAddBtn').addEventListener('click', submitQuickAdd);
   el('quickTitle').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitQuickAdd(); });
-  el('quickCancel').addEventListener('click', () => closeDialog('quickAddOverlay'));
+  el('quickCancel').addEventListener('click', () => { el('quickAddOverlay').hidden = true; });
   el('quickAddOverlay').addEventListener('click', (e) => {
-    if (e.target === el('quickAddOverlay')) closeDialog('quickAddOverlay');
+    if (e.target === el('quickAddOverlay')) el('quickAddOverlay').hidden = true;
   });
 
   /* Termin-Modal */
@@ -263,42 +299,56 @@ function boot() {
       title: el('evTitle').value, start: el('evStart').value,
       durationMin: parseInt(el('evDur').value, 10), color: el('evColor').value,
     });
-    closeDialog('eventOverlay');
+    el('eventOverlay').hidden = true;
     toast('TERMIN GESPEICHERT ✓');
   });
   el('evDelete').addEventListener('click', () => {
     deleteEvent(editingEventId);
-    closeDialog('eventOverlay');
+    el('eventOverlay').hidden = true;
     toast('TERMIN GELÖSCHT');
   });
-  el('evCancel').addEventListener('click', () => closeDialog('eventOverlay'));
+  el('evCancel').addEventListener('click', () => { el('eventOverlay').hidden = true; });
   el('eventOverlay').addEventListener('click', (e) => {
-    if (e.target === el('eventOverlay')) closeDialog('eventOverlay');
+    if (e.target === el('eventOverlay')) el('eventOverlay').hidden = true;
   });
 
   /* Gebetszeiten: Button öffnet die VORSCHAU (kein Auto-Eintrag) */
   el('prayerBtn').addEventListener('click', () => {
-    openDialog('prayerOverlay');
+    el('prayerOverlay').hidden = false;
     renderPrayerModal();
   });
   el('prayerOverlay').addEventListener('click', async (e) => {
-    if (e.target === el('prayerOverlay')) { closeDialog('prayerOverlay'); return; }
-    if (e.target.id === 'prayerEnableBtn') {
-      e.target.textContent = 'STANDORT WIRD ERMITTELT …';
-      const ok = await prayerTimes.enable();
-      toast(ok ? 'GEBETSZEITEN AKTIV ✓' : 'STANDORT NICHT VERFÜGBAR');
-      renderPrayerModal();
-      return;
-    }
-    if (e.target.id === 'prayerAdoptAll') { prayerTimes.adoptAll(todayISO()); renderPrayerModal(); return; }
-    if (e.target.id === 'prayerClearLocation') {
-      if (confirm('Gespeicherte Koordinaten, Cache und übernommene Gebetsblöcke löschen?')) {
-        prayerTimes.clearLocation();
-        toast('STANDORTDATEN GELÖSCHT');
+    if (e.target === el('prayerOverlay')) { el('prayerOverlay').hidden = true; return; }
+
+    // Stadt suchen
+    if (e.target.id === 'prayerCityBtn') {
+      const q = el('prayerCity').value.trim();
+      if (q.length < 2) return;
+      el('prayerCityBtn').textContent = 'SUCHE …';
+      const results = await prayerTimes.searchCity(q);
+      el('prayerCityBtn').textContent = 'SUCHEN';
+      if (results.length) {
+        await prayerTimes.setLocation({ lat: results[0].lat, lon: results[0].lon }, q);
+        toast(`STANDORT: ${q.toUpperCase()} ✓`);
         renderPrayerModal();
+        renderAll();
+      } else {
+        toast('STADT NICHT GEFUNDEN — ANDERS SCHREIBEN?');
       }
       return;
     }
+
+    // GPS-Fallback
+    if (e.target.id === 'prayerGpsBtn') {
+      e.target.textContent = 'GPS WIRD ERMITTELT …';
+      const ok = await prayerTimes.enable();
+      toast(ok ? 'GPS-STANDORT AKTIV ✓' : 'GPS NICHT VERFÜGBAR');
+      renderPrayerModal();
+      renderAll();
+      return;
+    }
+
+    if (e.target.id === 'prayerAdoptAll') { prayerTimes.adoptAll(todayISO()); renderPrayerModal(); return; }
     const adoptBtn = e.target.closest('[data-adopt]');
     if (adoptBtn) {
       const name = adoptBtn.dataset.adopt;
@@ -306,13 +356,22 @@ function boot() {
       renderPrayerModal();
     }
   });
-  el('prayerClose').addEventListener('click', () => closeDialog('prayerOverlay'));
+  // Methodenwechsel
+  el('prayerOverlay').addEventListener('change', async (e) => {
+    if (e.target.id === 'prayerMethodSel') {
+      await prayerTimes.setMethod(parseInt(e.target.value, 10));
+      toast('METHODE AKTUALISIERT ✓');
+      renderPrayerModal();
+      renderAll();
+    }
+  });
+  el('prayerClose').addEventListener('click', () => { el('prayerOverlay').hidden = true; });
 
   /* Gruppen-Verwaltung */
-  el('groupsBtn').addEventListener('click', () => { openDialog('groupsOverlay', { focus: '#newGroupName' }); renderGroupsModal(); });
-  el('groupsClose').addEventListener('click', () => closeDialog('groupsOverlay'));
+  el('groupsBtn').addEventListener('click', () => { el('groupsOverlay').hidden = false; renderGroupsModal(); });
+  el('groupsClose').addEventListener('click', () => { el('groupsOverlay').hidden = true; });
   el('groupsOverlay').addEventListener('click', (e) => {
-    if (e.target === el('groupsOverlay')) { closeDialog('groupsOverlay'); return; }
+    if (e.target === el('groupsOverlay')) { el('groupsOverlay').hidden = true; return; }
     const del = e.target.closest('[data-gdel]');
     if (del && confirm('Gruppe löschen? Zugehörige Aufgaben behalten "Keine Gruppe".')) {
       deleteGroup(del.dataset.gdel);
@@ -352,14 +411,6 @@ function boot() {
   setInterval(renderAll, 60 * 1000);
 
   switchView('today');
-}
-
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((error) => {
-      console.warn('Service Worker konnte nicht registriert werden:', error);
-    });
-  });
 }
 
 /* Boot-Sequenz zuerst, dann die App */

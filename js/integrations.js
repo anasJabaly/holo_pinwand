@@ -1,201 +1,175 @@
 /* ═══════════════════════════════════════════════════════
    integrations.js · Erweiterbare Integrations-Schicht
+   Jede Integration ist ein Objekt { id, init(), … } und wird
+   in REGISTRY eingehängt – neue Module später einfach ergänzen.
    ═══════════════════════════════════════════════════════ */
 
-import { clearLocationData, getState, todayISO, update } from './state.js';
-import { tasksForDate, toMinutes } from './tasks.js';
+import { getState, update, todayISO } from './state.js';
+import { toMinutes, tasksForDate } from './tasks.js';
 
-const PRAYER_NAMES = {
-  Fajr: 'Fajr',
-  Dhuhr: 'Dhuhr',
-  Asr: 'Asr',
-  Maghrib: 'Maghrib',
-  Isha: 'Isha',
-};
-const PRAYER_API_TIMEOUT_MS = 10_000;
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+/* ── 1) Gebetszeiten (Aladhan API, kostenlos, kein Key) ── */
 
-export const PRAYER_BLOCK_MIN = 20;
+const PRAYER_NAMES = { Fajr: 'Fajr', Dhuhr: 'Dhuhr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Isha' };
+export const PRAYER_BLOCK_MIN = 20; // fester, nicht verschiebbarer Block
 
-function roundCoordinate(value) {
-  return Number(Number(value).toFixed(3));
-}
-
-function validCoordinates(coords) {
-  if (!coords) return null;
-  const lat = Number(coords.lat);
-  const lon = Number(coords.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
-  return { lat: roundCoordinate(lat), lon: roundCoordinate(lon) };
-}
-
-function manualCoordinates() {
-  const raw = prompt(
-    'Standort nicht verfügbar.\nKoordinaten manuell eingeben (Lat, Lon), z. B. 51.17, 7.08:',
-  );
-  if (!raw) return null;
-  const [lat, lon] = raw.split(',').map((value) => Number.parseFloat(value.trim()));
-  return validCoordinates({ lat, lon });
-}
-
-async function browserCoordinates() {
-  if (!navigator.geolocation) return null;
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => resolve(validCoordinates({
-        lat: position.coords.latitude,
-        lon: position.coords.longitude,
-      })),
-      () => resolve(null),
-      { enableHighAccuracy: false, maximumAge: 60 * 60 * 1000, timeout: 8000 },
-    );
-  });
-}
-
-async function fetchJsonWithTimeout(url, timeoutMs = PRAYER_API_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.json();
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+/** Berechnungsmethoden, die in Deutschland/Europa sinnvoll sind */
+export const PRAYER_METHODS = [
+  { id: 3,  name: 'Muslim World League' },
+  { id: 13, name: 'Diyanet (Türkei/DE üblich)' },
+  { id: 2,  name: 'ISNA (Nordamerika)' },
+  { id: 5,  name: 'Ägypt. Behörde' },
+  { id: 4,  name: 'Umm al-Qura (Mekka)' },
+];
 
 export const prayerTimes = {
   id: 'prayerTimes',
 
-  async enable() {
-    const coords = (await browserCoordinates()) || manualCoordinates();
-    if (!coords) return false;
-
-    update((state) => {
-      state.settings.coords = coords;
-      state.settings.prayerEnabled = true;
-    });
-
-    const result = await this.fetchFor(todayISO(), { force: true });
-    if (!result) {
-      update((state) => { state.settings.prayerEnabled = false; });
-      return false;
+  /**
+   * Stadt per Name suchen (Aladhan-Geocoding).
+   * Rückgabe: [{ name, country, lat, lon }] oder [].
+   */
+  async searchCity(query) {
+    const q = String(query || '').trim();
+    if (q.length < 2) return [];
+    try {
+      // Aladhan liefert Zeiten direkt per Stadt/Land – wir nutzen die
+      // Adress-Variante, die intern geокодiert, und lesen meta.latitude/longitude.
+      const res = await fetch(
+        `https://api.aladhan.com/v1/timingsByAddress/${encodeURIComponent(todayISO().split('-').reverse().join('-'))}?address=${encodeURIComponent(q)}&method=${getState().settings.prayerMethod ?? 13}`
+      );
+      const json = await res.json();
+      const meta = json?.data?.meta;
+      if (!meta) return [];
+      return [{ name: q, country: '', lat: meta.latitude, lon: meta.longitude }];
+    } catch (e) {
+      console.warn('Stadtsuche fehlgeschlagen:', e);
+      return [];
     }
+  },
+
+  /** Standort setzen (aus Stadtwahl oder Geolocation) */
+  async setLocation(coords, label = '') {
+    update((s) => {
+      s.settings.coords = coords;
+      s.settings.locationLabel = label;
+      s.settings.prayerEnabled = true;
+      s.prayerCache = {}; // Cache leeren, damit neue Methode/Stadt greift
+    });
+    await this.fetchFor(todayISO());
     return true;
   },
 
-  disable() {
-    update((state) => { state.settings.prayerEnabled = false; });
+  /** Berechnungsmethode wechseln → Cache leeren */
+  setMethod(methodId) {
+    update((s) => { s.settings.prayerMethod = methodId; s.prayerCache = {}; });
+    return this.fetchFor(todayISO());
   },
 
-  clearLocation() {
-    clearLocationData();
-  },
-
-  /** Zeiten für ein Datum holen (mit lokalem Cache). */
-  async fetchFor(iso, { force = false } = {}) {
-    const state = getState();
-    if (!state.settings.coords) return null;
-    if (!force && state.prayerCache[iso]) return state.prayerCache[iso];
-
-    const [year, month, day] = iso.split('-');
-    const { lat, lon } = state.settings.coords;
-    const query = new URLSearchParams({
-      latitude: String(lat),
-      longitude: String(lon),
-      method: '3',
-    });
-
-    try {
-      const json = await fetchJsonWithTimeout(
-        `https://api.aladhan.com/v1/timings/${day}-${month}-${year}?${query}`,
+  /** Standort per GPS ermitteln */
+  async enable() {
+    const coords = await new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        () => resolve(null),
+        { timeout: 8000 }
       );
-      const timings = json?.data?.timings;
-      if (!timings || typeof timings !== 'object') throw new Error('Ungültige API-Antwort');
+    });
+    if (!coords) return false;
+    return this.setLocation(coords, 'Mein Standort');
+  },
 
-      const blocks = Object.keys(PRAYER_NAMES).map((key) => {
-        const time = String(timings[key] || '').slice(0, 5);
-        if (!TIME_PATTERN.test(time)) throw new Error(`Ungültige Zeit für ${key}`);
-        return { name: PRAYER_NAMES[key], time };
-      });
+  disable() {
+    update((s) => { s.settings.prayerEnabled = false; });
+  },
 
-      update((next) => { next.prayerCache[iso] = blocks; });
+  /** Zeiten für ein Datum holen (mit Cache im State) */
+  async fetchFor(iso) {
+    const s = getState();
+    if (!s.settings.coords) return null;
+    if (s.prayerCache[iso]) return s.prayerCache[iso];
+
+    const [y, m, d] = iso.split('-');
+    const { lat, lon } = s.settings.coords;
+    const method = s.settings.prayerMethod ?? 13;
+    try {
+      const res = await fetch(
+        `https://api.aladhan.com/v1/timings/${d}-${m}-${y}?latitude=${lat}&longitude=${lon}&method=${method}`
+      );
+      const json = await res.json();
+      const t = json?.data?.timings;
+      if (!t) return null;
+      const blocks = Object.keys(PRAYER_NAMES).map((k) => ({
+        name: PRAYER_NAMES[k],
+        time: t[k].slice(0, 5), // "HH:MM"
+      }));
+      update((st) => { st.prayerCache[iso] = blocks; });
       return blocks;
-    } catch (error) {
-      const reason = error?.name === 'AbortError' ? 'Zeitüberschreitung' : error?.message;
-      console.warn(`Gebetszeiten-Abruf fehlgeschlagen (${reason || 'unbekannt'}).`);
+    } catch (e) {
+      console.warn('Gebetszeiten-Abruf fehlgeschlagen:', e);
       return null;
     }
   },
 
+  /** Für das HUD-Panel: reine Liste der Zeiten */
   listFor(iso) {
-    const state = getState();
-    if (!state.settings.prayerEnabled) return [];
-    return state.prayerCache[iso] || [];
+    const s = getState();
+    if (!s.settings.prayerEnabled) return [];
+    return s.prayerCache[iso] || [];
   },
 
+  /** Ist dieses Gebet für den Tag in den Plan übernommen? */
   isAdopted(iso, name) {
     return (getState().prayerAdopted[iso] || []).includes(name);
   },
 
+  /** Einzelnes Gebet in den Tagesplan übernehmen / entfernen */
   adopt(iso, name, on) {
-    update((state) => {
-      const list = state.prayerAdopted[iso] || [];
-      state.prayerAdopted[iso] = on
+    update((s) => {
+      const list = s.prayerAdopted[iso] || [];
+      s.prayerAdopted[iso] = on
         ? [...new Set([...list, name])]
-        : list.filter((entry) => entry !== name);
+        : list.filter((x) => x !== name);
     });
   },
 
+  /** Alle Gebete des Tages übernehmen */
   adoptAll(iso) {
-    const names = this.listFor(iso).map((prayer) => prayer.name);
-    update((state) => { state.prayerAdopted[iso] = names; });
+    const names = this.listFor(iso).map((p) => p.name);
+    update((s) => { s.prayerAdopted[iso] = names; });
   },
 
+  /** Für die Timeline: NUR vom Nutzer bestätigte Gebete als Blöcke */
   blocksFor(iso) {
-    const state = getState();
-    if (!state.settings.prayerEnabled) return [];
-    const adopted = state.prayerAdopted[iso] || [];
-    return (state.prayerCache[iso] || [])
-      .filter((prayer) => adopted.includes(prayer.name))
-      .map((prayer) => ({
-        kind: 'prayer',
-        title: prayer.name,
-        start: prayer.time,
-        durationMin: PRAYER_BLOCK_MIN,
-      }));
+    const s = getState();
+    if (!s.settings.prayerEnabled) return [];
+    const adopted = s.prayerAdopted[iso] || [];
+    return (s.prayerCache[iso] || [])
+      .filter((p) => adopted.includes(p.name))
+      .map((p) => ({
+      kind: 'prayer',
+      title: p.name,
+      start: p.time,
+      durationMin: PRAYER_BLOCK_MIN,
+    }));
   },
 };
 
-async function showReminder(title, options) {
-  if ('serviceWorker' in navigator) {
-    const registration = await navigator.serviceWorker.ready.catch(() => null);
-    if (registration) {
-      await registration.showNotification(title, options);
-      return;
-    }
-  }
-  new Notification(title, options);
-}
+/* ── 2) Erinnerungen (Notification API) ─────────────── */
 
 export const reminders = {
   id: 'reminders',
-  LEAD_MIN: 10,
+  LEAD_MIN: 10,               // Minuten Vorlauf
   _timer: null,
-  _notified: new Set(),
+  _notified: new Set(),       // "taskId@start" – nur einmal melden
 
   async enable() {
     if (!('Notification' in window)) return false;
-    const permission = await Notification.requestPermission();
-    const enabled = permission === 'granted';
-    update((state) => { state.settings.notifyEnabled = enabled; });
-    if (enabled) this.start();
-    else this.stop();
-    return enabled;
+    const perm = await Notification.requestPermission();
+    const ok = perm === 'granted';
+    update((s) => { s.settings.notifyEnabled = ok; });
+    if (ok) this.start();
+    return ok;
   },
 
   start() {
@@ -204,34 +178,28 @@ export const reminders = {
     this.check();
   },
 
-  stop() {
-    if (this._timer) clearInterval(this._timer);
-    this._timer = null;
-  },
-
   check() {
-    const state = getState();
-    if (!state.settings.notifyEnabled || Notification.permission !== 'granted') return;
+    const s = getState();
+    if (!s.settings.notifyEnabled) return;
     const now = new Date();
     const nowMin = now.getHours() * 60 + now.getMinutes();
+    const today = todayISO();
 
-    tasksForDate(todayISO())
-      .filter((task) => task.plan && task.status !== 'done')
-      .forEach((task) => {
-        const startMin = toMinutes(task.plan.start);
-        const key = `${task.id}@${task.plan.start}`;
+    tasksForDate(today)
+      .filter((t) => t.plan && !t.done)
+      .forEach((t) => {
+        const startMin = toMinutes(t.plan.start);
+        const key = `${t.id}@${t.plan.start}`;
         const diff = startMin - nowMin;
-        if (diff <= 0 || diff > this.LEAD_MIN || this._notified.has(key)) return;
-
-        this._notified.add(key);
-        showReminder('⬡ Holo-Pinnwand', {
-          body: `In ${diff} Min: ${task.title} (${task.plan.start})`,
-          icon: 'icons/icon-192.png',
-          badge: 'icons/icon-192.png',
-          tag: key,
-        }).catch((error) => console.warn('Benachrichtigung fehlgeschlagen:', error));
+        if (diff > 0 && diff <= this.LEAD_MIN && !this._notified.has(key)) {
+          this._notified.add(key);
+          new Notification('⬡ Holo-Pinnwand', {
+            body: `In ${diff} Min: ${t.title} (${t.plan.start})`,
+          });
+        }
       });
   },
 };
 
+/* ── Registry: hier künftige Integrationen ergänzen ── */
 export const REGISTRY = [prayerTimes, reminders];

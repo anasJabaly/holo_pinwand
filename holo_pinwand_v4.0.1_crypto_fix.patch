@@ -1,0 +1,68 @@
+--- a/tests/state-and-tasks.test.js
++++ b/tests/state-and-tasks.test.js
+@@ -1,5 +1,6 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
++import { webcrypto } from 'node:crypto';
+ 
+ class MemoryStorage {
+   #values = new Map();
+@@ -9,6 +10,7 @@
+   clear() { this.#values.clear(); }
+ }
+ 
++globalThis.crypto ??= webcrypto;
+ globalThis.localStorage = new MemoryStorage();
+ 
+ const stateModule = await import('../js/state.js');
+@@ -24,7 +26,7 @@
+ 
+ function baseTask(overrides = {}) {
+   return {
+-    id: crypto.randomUUID(),
++    id: globalThis.crypto.randomUUID(),
+     title: 'Testaufgabe',
+     difficulty: 'medium',
+     priority: 'normal',
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "holo-pinwand",
+-  "version": "4.0.0",
++  "version": "4.0.1",
+   "private": true,
+   "type": "module",
+   "description": "Lokale, gamifizierte Aufgaben-Pinnwand mit Tagesplaner, Kalender und PWA-Unterstützung.",
+@@ -11,6 +11,6 @@
+     "verify": "npm run check && npm test"
+   },
+   "engines": {
+-    "node": ">=20"
++    "node": ">=18"
+   }
+ }
+--- a/README.md
++++ b/README.md
+@@ -17,7 +17,7 @@
+ 
+ ## Lokal starten
+ 
+-Voraussetzung: Node.js 20 oder neuer.
++Voraussetzung: Node.js 18 oder neuer.
+ 
+ ```bash
+ npm run dev
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,10 @@
+ # Changelog
+ 
++## 4.0.1
++
++- Testumgebung initialisiert Web Crypto explizit für Node.js 18 und neuere Versionen.
++- Mindestversion in `package.json` auf Node.js 18 korrigiert.
++
+ ## 4.0.0 – Stabilität, Datenschutz und PWA
+ 
+ ### Behoben

@@ -609,21 +609,82 @@ select.hud-btn { appearance: none; -webkit-appearance: none; }
 .boot-form { display: flex; flex-direction: column; gap: 12px; width: min(300px, 90vw); animation: boot-fade 0.8s ease 0.6s both; }
 @keyframes boot-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-/* ── Datenverwaltung ── */
-.data-actions {
-  display: grid;
-  gap: 10px;
-}
-.data-actions .hud-btn {
-  width: 100%;
-  min-height: 42px;
-  text-align: center;
-}
-.hud-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
+/* ═══ v5: Einklappbare Panels, Mehr-Menü, Ambient, Gebets-Settings ═══ */
 
-/* Dialoge bleiben auch bei Tastaturzoom nutzbar. */
-.overlay:focus { outline: none; }
-.modal-body { overflow-y: auto; }
+/* Panels mit klappbarem Kopf */
+.panel { border: 1px solid var(--holo-line); background: var(--bg-panel); }
+.panel-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: transparent; border: none; cursor: pointer;
+  padding: 12px 14px; color: var(--text);
+}
+.panel-title {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 3px; color: var(--holo);
+}
+.panel-chevron {
+  font-size: 11px; color: var(--text-dim); transition: transform 0.2s;
+}
+.panel.collapsed .panel-chevron { transform: rotate(-90deg); }
+.panel-body { padding: 0 14px 14px; }
+.panel.collapsed .panel-body { display: none; }
+.panel .timeline-wrap { max-height: 420px; }
+
+/* View-Switch als zusammenhängende Gruppe */
+.view-switch { display: flex; gap: 6px; }
+
+/* "⋯ Mehr"-Menü */
+.more-wrap { position: relative; }
+.more-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  min-width: 220px; background: var(--bg-solid);
+  border: 1px solid var(--holo-dim); box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column; padding: 5px;
+}
+.menu-item {
+  background: transparent; border: none; color: var(--text);
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px;
+  text-align: left; padding: 10px 12px; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.menu-item:hover { background: rgba(95,227,255,0.08); color: var(--holo); }
+
+/* Gebets-Einstellungen im Modal */
+.prayer-settings { margin-bottom: 6px; }
+.prayer-divider { height: 1px; background: var(--holo-line); margin: 14px 0; }
+
+/* Ambient / Screensaver */
+.ambient {
+  position: fixed; inset: 0; z-index: 300;
+  background: radial-gradient(ellipse at 50% 40%, #0A1524, #04070E 80%);
+  display: grid; place-items: center; cursor: pointer;
+  animation: amb-in 0.4s ease;
+}
+@keyframes amb-in { from { opacity: 0; } to { opacity: 1; } }
+.amb-inner { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px; }
+.amb-clock {
+  font-family: var(--font-mono); font-weight: 400;
+  font-size: clamp(64px, 15vw, 200px); line-height: 1;
+  color: var(--holo); letter-spacing: 4px;
+  text-shadow: 0 0 40px var(--holo-dim);
+}
+.amb-date {
+  font-family: var(--font-mono); font-size: clamp(12px, 2vw, 18px);
+  letter-spacing: 6px; color: var(--text-dim); margin-bottom: 30px;
+}
+.amb-cards { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
+.amb-card {
+  border: 1px solid var(--holo-line); background: rgba(13,27,42,0.4);
+  padding: 20px 30px; min-width: 240px; text-align: left;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+.amb-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; color: var(--text-dim); margin-bottom: 8px; }
+.amb-task-title { font-size: 26px; font-weight: 600; }
+.amb-task-time { font-family: var(--font-mono); font-size: 13px; color: var(--holo); margin-top: 6px; }
+.amb-prayer-name { font-size: 26px; font-weight: 600; color: var(--prayer); }
+.amb-prayer-time { font-family: var(--font-mono); font-size: 14px; color: var(--prayer); opacity: 0.8; margin-top: 6px; }
+.amb-hint { font-size: 10px; letter-spacing: 3px; color: rgba(127,160,181,0.4); margin-top: 40px; }
+
+@media (max-width: 720px) {
+  .view-nav { gap: 6px; }
+  .search-input { min-width: 110px; flex: 1; }
+}

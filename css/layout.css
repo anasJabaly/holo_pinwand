@@ -84,28 +84,3 @@ header.hud-header {
   .clock { text-align: center; }
   .week-grid { grid-template-columns: 1fr; }
 }
-
-@media (max-width: 700px) {
-  .app { padding-inline: 12px; }
-  .cmd {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-  .cmd .prompt { display: none; }
-  .cmd input[type="text"] { grid-column: 1 / -1; }
-  .cmd .primary { grid-column: 1 / -1; min-height: 44px; }
-  .view-nav .hud-btn,
-  .view-nav .search-input,
-  .view-nav select { min-height: 44px; }
-  .view-nav .search-input { flex: 1 1 100%; order: 2; }
-  .modal-head { align-items: flex-start; gap: 12px; }
-}
-
-@media (max-width: 420px) {
-  .cmd { grid-template-columns: 1fr; }
-  .cmd input,
-  .cmd select,
-  .cmd .primary { grid-column: 1; width: 100%; }
-  .overlay { padding: 8px; }
-  .modal { max-height: 96vh; clip-path: none; }
-}

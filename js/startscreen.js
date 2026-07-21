@@ -45,7 +45,7 @@ export function runBootSequence(onDone) {
       <div class="boot-form">
         <label class="mono dim" for="bootName" style="font-size:10px; letter-spacing:2px">WIE SOLL ICH DICH NENNEN?</label>
         <input type="text" class="form-input" id="bootName" maxlength="30" placeholder="Dein Name" autocomplete="off">
-        <button type="button" class="hud-btn primary" id="bootStart">SYSTEM STARTEN</button>
+        <button class="hud-btn primary" id="bootStart">SYSTEM STARTEN</button>
         <div class="mono dim" style="font-size:10px; letter-spacing:1px">
           STANDORT FÜR GEBETSZEITEN KANNST DU SPÄTER ÜBER ☾ AKTIVIEREN
         </div>

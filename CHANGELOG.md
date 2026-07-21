@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.0.1
+
+- Testumgebung initialisiert Web Crypto explizit für Node.js 18 und neuere Versionen.
+- Mindestversion in `package.json` auf Node.js 18 korrigiert.
+
 ## 4.0.0 – Stabilität, Datenschutz und PWA
 
 ### Behoben

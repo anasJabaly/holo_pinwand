@@ -1,6 +1,6 @@
 {
   "name": "holo-pinwand",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "private": true,
   "type": "module",
   "description": "Lokale, gamifizierte Aufgaben-Pinnwand mit Tagesplaner, Kalender und PWA-Unterstützung.",
@@ -11,6 +11,6 @@
     "verify": "npm run check && npm test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   }
 }
